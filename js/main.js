@@ -235,78 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
         game.startGame();
     });
     
-    // 일반 채팅 전송 버튼 클릭
-    chatSendBtn.addEventListener('click', () => {
-        if (!game) return;
-        
-        const message = chatInput.value.trim();
-        if (!message) return;
-        
-        sendFreeChat(message);
-        chatInput.value = '';
-    });
-    
-    // 채팅 입력시 엔터키 처리
-    chatInput.addEventListener('keypress', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            chatSendBtn.click();
-        }
-    });
-    
-    // 턴 채팅 전송 버튼 클릭
-    turnChatSendBtn.addEventListener('click', () => {
-        if (!game) return;
-        
-        const message = turnChatInput.value.trim();
-        if (!message) return;
-        
-        if (message.length > 40) {
-            alert('설명은 40자 이내로 입력해주세요.');
-            return;
-        }
-        
-        if (game.gamePhase === 'playing' && 
-            game.turnOrder[game.currentTurn].id === myId) {
-            game.sendMessage(message, true);
-            turnChatInput.value = '';
-            turnChatInput.disabled = true;
-            turnChatSendBtn.disabled = true;
-        } else if (game.gamePhase === 'wordGuess' && game.liar === myId) {
-            game.sendMessage(message, false);
-            turnChatInput.value = '';
-            turnChatInput.disabled = true;
-            turnChatSendBtn.disabled = true;
-        }
-    });
-    
-    // 턴 채팅 입력시 엔터키 처리
-    turnChatInput.addEventListener('keypress', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            turnChatSendBtn.click();
-        }
-    });
-    
-    // 자유 채팅 버튼 클릭
-    document.getElementById('free-chat-send-btn').addEventListener('click', () => {
-        const freeChatInput = document.getElementById('free-chat-input');
-        const message = freeChatInput.value.trim();
-        
-        if (!message) return;
-        
-        sendFreeChat(message);
-        freeChatInput.value = '';
-    });
-    
-    // 자유 채팅 입력시 엔터키 처리
-    document.getElementById('free-chat-input').addEventListener('keypress', event => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            document.getElementById('free-chat-send-btn').click();
-        }
-    });
-    
     // 게임 재시작 버튼 클릭
     restartGameBtn.addEventListener('click', () => {
         if (!game) return;
@@ -326,18 +254,44 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 자유 채팅 메시지 전송
     function sendFreeChat(message) {
-        const freeChatData = {
-            type: 'freeChat',
-            playerId: myId,
-            nickname: game.players.find(p => p.id === myId).nickname,
-            message: message
-        };
+        if (!game) {
+            console.error('게임 인스턴스가 없습니다.');
+            return;
+        }
         
-        // 모든 플레이어에게 전송
-        game.broadcastToAll(freeChatData);
+        const player = game.players.find(p => p.id === myId);
+        if (!player) {
+            console.error('플레이어 정보를 찾을 수 없습니다.');
+            return;
+        }
         
-        // 자유 채팅 메시지 표시
-        showFreeChatMessage(freeChatData.nickname, freeChatData.message);
+        console.log('자유 채팅 메시지 전송 함수 호출:', message);
+        
+        try {
+            const freeChatData = {
+                type: 'freeChat',
+                playerId: myId,
+                nickname: player.nickname,
+                message: message
+            };
+            
+            // 모든 플레이어에게 전송
+            game.broadcastToAll(freeChatData);
+            
+            // 자유 채팅 메시지 표시
+            showFreeChatMessage(freeChatData.nickname, freeChatData.message);
+            
+            console.log('자유 채팅 메시지 전송 완료');
+        } catch (error) {
+            console.error('자유 채팅 메시지 전송 중 오류 발생:', error);
+            
+            // 오류 발생해도 UI에는 메시지 표시 (적어도 로컬에서는 작동하도록)
+            try {
+                showFreeChatMessage(player.nickname, message);
+            } catch (displayError) {
+                console.error('자유 채팅 메시지 표시 중 오류 발생:', displayError);
+            }
+        }
     }
     
     // 게임 이벤트 리스너 설정
@@ -1230,6 +1184,120 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameEndCountdown.classList.remove('active');
             }, 10000);
         }
+    }
+
+    // 채팅 버튼 이벤트 리스너 설정
+    function setupChatButtonListeners() {
+        console.log('채팅 버튼 이벤트 리스너 설정 시작');
+        
+        // DOM 요소 존재 확인 로깅
+        console.log('채팅 요소 존재 확인:',
+            'chatSendBtn:', !!chatSendBtn,
+            'chatInput:', !!chatInput,
+            'turnChatSendBtn:', !!turnChatSendBtn,
+            'turnChatInput:', !!turnChatInput,
+            'free-chat-send-btn:', !!document.getElementById('free-chat-send-btn'),
+            'free-chat-input:', !!document.getElementById('free-chat-input')
+        );
+        
+        // 일반 채팅 이벤트 리스너
+        if (chatSendBtn && chatInput) {
+            // 채팅 버튼 이벤트 리스너 등록
+            chatSendBtn.addEventListener('click', () => {
+                if (!game) return;
+                
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                console.log('일반 채팅 메시지 전송:', message);
+                sendFreeChat(message);
+                chatInput.value = '';
+            });
+            
+            // 입력 필드에서 Enter 키 누를 때 메시지 전송
+            chatInput.addEventListener('keypress', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    chatSendBtn.click();
+                }
+            });
+            
+            console.log('일반 채팅 이벤트 리스너 등록 완료');
+        } else {
+            console.error('일반 채팅 DOM 요소를 찾을 수 없습니다.');
+        }
+
+        // 턴 채팅 이벤트 리스너
+        if (turnChatSendBtn && turnChatInput) {
+            turnChatSendBtn.addEventListener('click', () => {
+                if (!game) return;
+                
+                const message = turnChatInput.value.trim();
+                if (!message) return;
+                
+                console.log('턴 채팅 메시지 전송 시도:', message);
+                
+                if (message.length > 40) {
+                    alert('설명은 40자 이내로 입력해주세요.');
+                    return;
+                }
+                
+                if (game.gamePhase === 'playing' && 
+                    game.turnOrder[game.currentTurn].id === myId) {
+                    game.sendMessage(message, true);
+                    turnChatInput.value = '';
+                    turnChatInput.disabled = true;
+                    turnChatSendBtn.disabled = true;
+                } else if (game.gamePhase === 'wordGuess' && game.liar === myId) {
+                    game.sendMessage(message, false);
+                    turnChatInput.value = '';
+                    turnChatInput.disabled = true;
+                    turnChatSendBtn.disabled = true;
+                }
+            });
+            
+            turnChatInput.addEventListener('keypress', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    turnChatSendBtn.click();
+                }
+            });
+            
+            console.log('턴 채팅 이벤트 리스너 등록 완료');
+        } else {
+            console.error('턴 채팅 DOM 요소를 찾을 수 없습니다.');
+        }
+        
+        // 자유 채팅 이벤트 리스너
+        const freeChatSendBtn = document.getElementById('free-chat-send-btn');
+        const freeChatInput = document.getElementById('free-chat-input');
+        
+        if (freeChatSendBtn && freeChatInput) {
+            // 자유 채팅 버튼 이벤트 리스너 등록
+            freeChatSendBtn.addEventListener('click', () => {
+                if (!game) return;
+                
+                const message = freeChatInput.value.trim();
+                if (!message) return;
+                
+                console.log('자유 채팅 메시지 전송:', message);
+                sendFreeChat(message);
+                freeChatInput.value = '';
+            });
+            
+            freeChatInput.addEventListener('keypress', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    freeChatSendBtn.click();
+                }
+            });
+            
+            console.log('자유 채팅 이벤트 리스너 등록 완료');
+        } else {
+            console.error('자유 채팅 DOM 요소를 찾을 수 없습니다.');
+        }
+        
+        console.log('채팅 버튼 이벤트 리스너 설정 완료');
     }
 
     // 초기화 시 채팅 이벤트 리스너 설정
