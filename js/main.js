@@ -4,6 +4,8 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('게임 스크립트 초기화');
+    
     // PeerJS 라이브러리 로드 확인
     function checkPeerJSLoaded() {
         if (typeof Peer === 'undefined') {
@@ -61,65 +63,52 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginScreen = document.getElementById('login-screen');
     const lobbyScreen = document.getElementById('lobby-screen');
     const gameScreen = document.getElementById('game-screen');
-    const nicknameInput = document.getElementById('nickname-input');
-    const joinGameBtn = document.getElementById('join-game-btn');
     const playersList = document.getElementById('players-list');
-    const playerCount = document.getElementById('player-count');
-    const gameSettings = document.getElementById('game-settings');
-    const gameModeSelect = document.getElementById('game-mode');
+    const gamePlayersList = document.getElementById('game-players-list');
+    const spectatorsList = document.getElementById('spectators-list');
+    const nicknameInput = document.getElementById('nickname-input');
+    const roomIdInput = document.getElementById('room-id-input');
+    const joinGameBtn = document.getElementById('join-game-btn');
+    const createRoomBtn = document.getElementById('create-room-btn');
+    const joinRoomBtn = document.getElementById('join-room-btn');
     const startGameBtn = document.getElementById('start-game-btn');
-    const categoryDisplay = document.getElementById('category');
-    const wordDisplay = document.getElementById('word');
-    const chatMessages = document.getElementById('chat-messages');
+    const gameModeSelect = document.getElementById('game-mode-select');
     const chatInput = document.getElementById('chat-input');
     const chatSendBtn = document.getElementById('chat-send-btn');
+    const chatMessages = document.getElementById('chat-messages');
     const turnChatInput = document.getElementById('turn-chat-input');
     const turnChatSendBtn = document.getElementById('turn-chat-send-btn');
-    const turnDisplay = document.getElementById('turn-display');
+    const turnMessages = document.getElementById('turn-messages');
+    const gameInfo = document.getElementById('game-info');
+    const currentWordDisplay = document.getElementById('current-word');
+    const turnIndicator = document.getElementById('turn-indicator');
+    const restartGameBtn = document.getElementById('restart-game-btn');
     const voteSection = document.getElementById('vote-section');
     const voteList = document.getElementById('vote-list');
-    const voteResultDisplay = document.getElementById('vote-result');
+    const wordGuessSection = document.getElementById('word-guess-section');
+    const wordGuessInput = document.getElementById('word-guess-input');
+    const wordGuessBtn = document.getElementById('word-guess-btn');
+    const voteTimer = document.getElementById('vote-timer');
+    const wordGuessTimer = document.getElementById('word-guess-timer');
     const gameResultDisplay = document.getElementById('game-result');
-    const restartGameBtn = document.getElementById('restart-game-btn');
-    const spectatorList = document.getElementById('spectator-list');
-    const helpBtn = document.getElementById('help-btn');
-    const helpModal = document.getElementById('help-modal');
-    const closeModalBtn = document.querySelector('.close-btn');
-    const freeChatMessages = document.getElementById('free-chat-messages');
     
-    // 단일 고정 방 ID - 모든 사용자가 동일한 방에 접속
-    const DEFAULT_ROOM_ID = "liargame-fixed-room";
-    
-    // 게임 인스턴스
-    console.log('게임 인스턴스 생성 시작');
+    // 게임 상태 변수
     let game = new LiarGame();
     let myId = null;
-    let votingTimer = null;
-    let guessTimer = null;
-    let isFirstPlayer = true;  // 첫 번째 플레이어 여부
-
+    let isFirstPlayer = false;
+    let roomId = null;
+    const DEFAULT_ROOM_ID = 'liargame-shared-room';
+    
     // 초기 화면 설정
     loginScreen.style.display = 'block';
     lobbyScreen.style.display = 'none';
     gameScreen.style.display = 'none';
     
-    // 도움말 모달 이벤트
-    helpBtn.addEventListener('click', () => {
-        helpModal.style.display = 'block';
-    });
+    // 버튼 초기 비활성화
+    startGameBtn.disabled = true;
     
-    closeModalBtn.addEventListener('click', () => {
-        helpModal.style.display = 'none';
-    });
-    
-    window.addEventListener('click', (event) => {
-        if (event.target === helpModal) {
-            helpModal.style.display = 'none';
-        }
-    });
-    
-    // 게임 참여 버튼 클릭
-    joinGameBtn.addEventListener('click', async () => {
+    // 새 방 만들기 버튼
+    createRoomBtn.addEventListener('click', async () => {
         const nickname = nicknameInput.value.trim();
         
         if (nickname.length < 1 || nickname.length > 6) {
@@ -127,8 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        joinGameBtn.disabled = true;
-        joinGameBtn.textContent = '접속 중...';
+        createRoomBtn.disabled = true;
+        joinRoomBtn.disabled = true;
+        createRoomBtn.textContent = '방 생성 중...';
         
         try {
             console.log('게임 초기화 시작');
@@ -142,63 +132,101 @@ document.addEventListener('DOMContentLoaded', () => {
             // 이벤트 리스너 설정
             setupGameListeners();
             
-            // 방장인 경우
-            if (game.isHost) {
-                console.log('방장으로 접속 성공');
-                isFirstPlayer = true;
+            // 방 생성
+            roomId = game.createRoom();
+            console.log('방 생성 완료, 방 ID:', roomId);
+            
+            // 방 ID 표시
+            document.getElementById('room-id-display').textContent = roomId;
+            document.getElementById('room-id-container').style.display = 'block';
+            
+            // 첫 번째 플레이어는 자동으로 방장
+            isFirstPlayer = true;
+            startGameBtn.disabled = false;
+            gameModeSelect.disabled = false;
+            
+            // 플레이어 목록 업데이트
+            updatePlayersList();
+            
+            console.log('게임 초기화 및 방 설정 완료');
+        } catch (error) {
+            createRoomBtn.disabled = false;
+            joinRoomBtn.disabled = false;
+            createRoomBtn.textContent = '새 방 만들기';
+            
+            console.error('게임 초기화 실패:', error);
+            alert('방 생성에 실패했습니다: ' + error.message);
+        }
+    });
+    
+    // 방 참여 버튼
+    joinRoomBtn.addEventListener('click', async () => {
+        const nickname = nicknameInput.value.trim();
+        const inputRoomId = roomIdInput.value.trim();
+        
+        if (nickname.length < 1 || nickname.length > 6) {
+            alert('닉네임은 1자 이상 6자 이하로 입력해주세요.');
+            return;
+        }
+        
+        if (!inputRoomId) {
+            alert('방 ID를 입력해주세요.');
+            return;
+        }
+        
+        createRoomBtn.disabled = true;
+        joinRoomBtn.disabled = true;
+        joinRoomBtn.textContent = '참여 중...';
+        
+        try {
+            console.log('게임 초기화 시작');
+            // 게임 초기화
+            myId = await game.init(nickname);
+            
+            // 로그인 화면 숨기고 로비 화면 표시
+            loginScreen.style.display = 'none';
+            lobbyScreen.style.display = 'block';
+            
+            // 이벤트 리스너 설정
+            setupGameListeners();
+            
+            // 기존 방 입장 시도
+            try {
+                // 입력된 방 ID로 입장 시도
+                console.log('방 입장 시도:', inputRoomId);
+                await game.joinRoom(inputRoomId);
+                console.log('방 입장 성공');
                 
-                // 첫 번째 플레이어는 자동으로 방장
-                startGameBtn.disabled = false;
-                gameModeSelect.disabled = false;
+                // 방 ID 저장
+                roomId = inputRoomId;
+                
+                // 일반 플레이어는 게임 시작/설정 버튼 비활성화
+                isFirstPlayer = false;
+                startGameBtn.disabled = true;
+                gameModeSelect.disabled = true;
                 
                 // 플레이어 목록 업데이트
                 updatePlayersList();
-            } else {
-                // 일반 플레이어인 경우
-                console.log('일반 플레이어로 접속 시도');
-                isFirstPlayer = false;
+            } catch (joinError) {
+                console.error('방 입장 실패:', joinError.message);
                 
-                // 기존 방 입장 시도
-                try {
-                    // 호스트 방에 입장 시도
-                    console.log('호스트 방 입장 시도...');
-                    await game.joinRoom();
-                    console.log('기존 방 입장 성공');
-                    
-                    // 일반 플레이어는 게임 시작/설정 버튼 비활성화
-                    startGameBtn.disabled = true;
-                    gameModeSelect.disabled = true;
-                    
-                    // 플레이어 목록 업데이트
-                    updatePlayersList();
-                } catch (joinError) {
-                    console.error('방 입장 실패:', joinError.message);
-                    
-                    // 오류 메시지 표시 및 상태 표시
-                    let errorMsg = '방 입장에 실패했습니다: ';
-                    if (joinError.message.includes('Failed to construct')) {
-                        errorMsg += 'WebRTC 연결 설정 오류. 브라우저나 네트워크 문제일 수 있습니다.';
-                    } else if (joinError.message.includes('Could not connect to peer')) {
-                        errorMsg += '호스트에 연결할 수 없습니다. 방이 존재하지 않거나 호스트가 오프라인입니다.';
-                    } else {
-                        errorMsg += joinError.message;
-                    }
-                    
-                    alert(errorMsg);
-                    
-                    // 로그인 화면으로 돌아가기
-                    joinGameBtn.disabled = false;
-                    joinGameBtn.textContent = '게임 참여하기';
-                    loginScreen.style.display = 'block';
-                    lobbyScreen.style.display = 'none';
-                    return;
-                }
+                // 오류 메시지 표시
+                alert('방 입장에 실패했습니다: ' + joinError.message);
+                
+                // 로그인 화면으로 돌아가기
+                createRoomBtn.disabled = false;
+                joinRoomBtn.disabled = false;
+                joinRoomBtn.textContent = '방 참여하기';
+                loginScreen.style.display = 'block';
+                lobbyScreen.style.display = 'none';
+                return;
             }
             
             console.log('게임 초기화 및 방 설정 완료');
         } catch (error) {
-            joinGameBtn.disabled = false;
-            joinGameBtn.textContent = '게임 참여하기';
+            createRoomBtn.disabled = false;
+            joinRoomBtn.disabled = false;
+            joinRoomBtn.textContent = '방 참여하기';
             
             console.error('게임 초기화 실패:', error);
             
@@ -1027,64 +1055,57 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayGameResult(result, playerScores) {
         gameResultDisplay.innerHTML = '';
         
-        const resultTitle = document.createElement('h3');
-        resultTitle.textContent = '게임 결과';
-        gameResultDisplay.appendChild(resultTitle);
+        // 게임 결과에 따른 헤더 설정
+        const resultHeader = document.createElement('h3');
         
-        const resultInfo = document.createElement('div');
-        resultInfo.classList.add('result-info');
+        if (result.result === 'liarWin') {
+            resultHeader.textContent = '라이어 승리!';
+            resultHeader.style.color = '#e74c3c';
+        } else {
+            resultHeader.textContent = '시민들 승리!';
+            resultHeader.style.color = '#3498db';
+        }
+        
+        gameResultDisplay.appendChild(resultHeader);
         
         // 라이어 정보
         const liarInfo = document.createElement('p');
         liarInfo.textContent = `라이어: ${result.liarNickname}`;
-        resultInfo.appendChild(liarInfo);
+        liarInfo.classList.add('player-info', 'liar-info');
+        gameResultDisplay.appendChild(liarInfo);
         
-        // 스파이 정보 (스파이 모드인 경우)
+        // 스파이 정보 (있는 경우)
         if (result.spyId) {
             const spyInfo = document.createElement('p');
             spyInfo.textContent = `스파이: ${result.spyNickname}`;
-            resultInfo.appendChild(spyInfo);
+            spyInfo.classList.add('player-info', 'spy-info');
+            gameResultDisplay.appendChild(spyInfo);
         }
         
         // 단어 정보
         const wordInfo = document.createElement('p');
-        wordInfo.textContent = `정답 단어: ${result.word}`;
-        resultInfo.appendChild(wordInfo);
+        wordInfo.textContent = `단어: ${result.word}`;
+        wordInfo.classList.add('word-info');
+        gameResultDisplay.appendChild(wordInfo);
         
-        // 라이어 추측 정보 (추측 단계가 있었을 경우)
-        if (result.guessedWord !== undefined) {
+        // 라이어가 단어를 맞췄는지 정보 (있는 경우)
+        if (result.guessedWord) {
             const guessInfo = document.createElement('p');
-            guessInfo.textContent = `라이어의 추측: ${result.guessedWord || '(시간 초과)'}`;
-            guessInfo.classList.add(result.isCorrect ? 'correct-guess' : 'wrong-guess');
-            resultInfo.appendChild(guessInfo);
+            guessInfo.textContent = `라이어의 추측: ${result.guessedWord}`;
+            guessInfo.classList.add('guess-info');
+            gameResultDisplay.appendChild(guessInfo);
         }
         
-        // 승리 정보
-        const winnerInfo = document.createElement('p');
-        winnerInfo.classList.add('winner-info');
-        
-        if (result.result === 'liarWin') {
-            winnerInfo.textContent = '라이어 승리!';
-            winnerInfo.classList.add('liar-win');
-        } else {
-            winnerInfo.textContent = '시민들 승리!';
-            winnerInfo.classList.add('citizens-win');
-        }
-        
-        resultInfo.appendChild(winnerInfo);
-        gameResultDisplay.appendChild(resultInfo);
-        
-        // 점수 정보
-        const scoreTitle = document.createElement('h3');
-        scoreTitle.textContent = '현재 점수';
-        gameResultDisplay.appendChild(scoreTitle);
-        
+        // 점수 테이블
         const scoreTable = document.createElement('table');
         scoreTable.classList.add('score-table');
         
+        // 테이블 헤더
         const headerRow = document.createElement('tr');
+        
         const headerPlayer = document.createElement('th');
         headerPlayer.textContent = '플레이어';
+        
         const headerScore = document.createElement('th');
         headerScore.textContent = '점수';
         
@@ -1092,6 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headerRow.appendChild(headerScore);
         scoreTable.appendChild(headerRow);
         
+        // 플레이어별 점수
         playerScores.sort((a, b) => b.score - a.score).forEach(player => {
             const row = document.createElement('tr');
             
@@ -1133,7 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameEndCountdown = document.getElementById('game-end-countdown');
             const countdownTimer = document.getElementById('countdown-timer');
             const countdownNumber = document.querySelector('.countdown-number');
-            const progressBar = document.querySelector('.countdown-progress-bar');
             
             gameEndCountdown.classList.add('active');
             
@@ -1141,7 +1162,9 @@ document.addEventListener('DOMContentLoaded', () => {
             countdownNumber.textContent = timeLeft;
             countdownNumber.setAttribute('data-count', timeLeft);
             countdownTimer.textContent = '초 후 다음 게임이 시작됩니다';
-            progressBar.style.width = '100%';
+            
+            // 메시지를 표시하여 다음 게임이 시작됨을 알립니다
+            showSystemMessage(`${timeLeft}초 후 다음 게임이 자동으로 시작됩니다. 잠시만 기다려주세요!`);
             
             // 전역 변수로 인터벌 저장
             if (window.countdownInterval) {
@@ -1167,10 +1190,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     countdownNumber.classList.remove('pulse');
                 }, 500);
                 
-                // 프로그레스 바 업데이트
-                const progressWidth = (timeLeft / 10) * 100;
-                progressBar.style.width = progressWidth + '%';
-                
                 if (timeLeft <= 0) {
                     clearInterval(window.countdownInterval);
                     window.countdownInterval = null;
@@ -1185,12 +1204,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameEndCountdown = document.getElementById('game-end-countdown');
             const countdownTimer = document.getElementById('countdown-timer');
             const countdownNumber = document.querySelector('.countdown-number');
-            const progressContainer = document.querySelector('.countdown-progress-container');
             
             gameEndCountdown.classList.add('active');
             countdownNumber.style.display = 'none';
-            progressContainer.style.display = 'none';
             countdownTimer.textContent = '방장이 다음 게임을 시작하길 기다리는 중...';
+            
+            // 시스템 메시지 표시
+            showSystemMessage('방장이 다음 게임을 시작하길 기다리는 중입니다. 자유롭게 채팅해 주세요!');
             
             // 10초 후 팝업 숨기기
             setTimeout(() => {

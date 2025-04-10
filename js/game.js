@@ -42,54 +42,6 @@ class LiarGame {
         }
     }
 
-    // 고정 ID로 PeerJS 초기화 (방장용)
-    async initWithFixedId() {
-        const FIXED_ROOM_ID = "liargame-fixed-room";
-        
-        return new Promise((resolve, reject) => {
-            // 고정 ID로 피어 생성 시도
-            this.peer = new Peer(FIXED_ROOM_ID, {
-                debug: 3,
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
-                    ]
-                }
-            });
-            
-            // 타임아웃 설정
-            const timeout = setTimeout(() => {
-                this.peer.destroy();
-                reject(new Error('고정 ID 접속 시간 초과'));
-            }, 10000);
-            
-            // ID 할당 성공 (방장이 됨)
-            this.peer.on('open', id => {
-                clearTimeout(timeout);
-                console.log('방장 ID 할당됨:', id);
-                this.myId = id;
-                this.isHost = true; // 방장으로 설정
-                resolve();
-            });
-            
-            // ID 타입 이미 사용중 오류 - 이미 다른 사람이 방장이라는 의미
-            this.peer.on('error', err => {
-                clearTimeout(timeout);
-                // ID 중복 오류는 파트너 초대를 의미
-                if (err.type === 'unavailable-id') {
-                    console.log('고정 ID가 이미 사용중, 일반 플레이어로 접속');
-                }
-                this.peer.destroy();
-                reject(err);
-            });
-        });
-    }
-
     // 게임 초기화 및 피어 연결
     async init(nickname) {
         if (nickname.length < 1 || nickname.length > 6) {
@@ -99,86 +51,39 @@ class LiarGame {
         try {
             console.log("PeerJS 인스턴스 생성 시작");
             
-            // 고정 방 ID 상수 정의
-            const FIXED_ROOM_ID = 'liargame-fixed-room';
+            // 랜덤 ID로 Peer 생성
+            this.peer = new Peer({
+                debug: 2,
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' }
+                    ]
+                }
+            });
             
-            // 방 생성 시도 (고정 ID 사용)
-            try {
-                console.log("고정 ID로 방 생성 시도:", FIXED_ROOM_ID);
+            // 연결 설정 완료 대기
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error("PeerJS 연결 시간 초과"));
+                }, 10000);
                 
-                // 고정 ID로 Peer 생성 시도 (방장이 될 시도)
-                this.peer = new Peer(FIXED_ROOM_ID, {
-                    debug: 2,
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    }
+                this.peer.on('open', id => {
+                    clearTimeout(timeout);
+                    console.log("PeerJS ID 할당됨:", id);
+                    this.myId = id;
+                    
+                    // 첫 번째 플레이어가 방장이 됨
+                    this.isHost = true;
+                    
+                    resolve();
                 });
                 
-                // 연결 설정 완료 대기
-                await new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error("PeerJS 연결 시간 초과"));
-                    }, 10000);
-                    
-                    this.peer.on('open', id => {
-                        clearTimeout(timeout);
-                        console.log("고정 ID로 방 생성 성공, 방장이 됨:", id);
-                        this.myId = id;
-                        this.isHost = true; // 방장으로 설정
-                        resolve();
-                    });
-                    
-                    this.peer.on('error', err => {
-                        clearTimeout(timeout);
-                        // ID 중복 오류는 이미 방이 있다는 의미
-                        if (err.type === 'unavailable-id') {
-                            console.log('고정 ID가 이미 사용중, 일반 플레이어로 접속 시도');
-                            reject(new Error('방이 이미 존재함'));
-                        } else {
-                            console.error("PeerJS 오류:", err);
-                            reject(err);
-                        }
-                    });
+                this.peer.on('error', err => {
+                    clearTimeout(timeout);
+                    console.error("PeerJS 오류:", err);
+                    reject(err);
                 });
-            } catch (err) {
-                // 고정 ID로 방 생성 실패 - 일반 플레이어로 접속
-                console.log("일반 플레이어로 접속 시도");
-                
-                // 랜덤 ID로 Peer 생성
-                this.peer = new Peer({
-                    debug: 2,
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    }
-                });
-                
-                // 연결 설정 완료 대기
-                await new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error("PeerJS 연결 시간 초과"));
-                    }, 10000);
-                    
-                    this.peer.on('open', id => {
-                        clearTimeout(timeout);
-                        console.log("일반 플레이어 ID 할당됨:", id);
-                        this.myId = id;
-                        this.isHost = false;
-                        resolve();
-                    });
-                    
-                    this.peer.on('error', err => {
-                        clearTimeout(timeout);
-                        console.error("PeerJS 오류:", err);
-                        reject(err);
-                    });
-                });
-            }
+            });
 
             // 플레이어 정보 저장
             this.players.push({
@@ -204,43 +109,34 @@ class LiarGame {
             throw error;
         }
     }
-
-    // 방 생성 - 호스트가 방을 만드는 함수
+    
+    // 방 생성 - 호스트가 방을 만드는 함수 (단순히 ID 반환)
     createRoom() {
-        // 고정 방 ID 사용 - 모든 사용자가 같은 방에 접속하기 위함
-        const FIXED_ROOM_ID = 'liargame-fixed-room';
-        
-        console.log('방 생성 중:', FIXED_ROOM_ID);
-        
-        // 플레이어 정보 설정
-        const playerInfo = this.players.find(p => p.id === this.myId);
-        
-        // 방장으로 설정
-        if (playerInfo) {
-            playerInfo.isHost = true;
+        if (!this.isHost) {
+            console.error('방장만 방을 생성할 수 있습니다.');
+            return null;
         }
         
+        console.log('방 생성 완료, 방 ID:', this.myId);
+        
         // 방 생성 성공 이벤트 발생
-        this.emit('roomCreated', { 
-            roomId: FIXED_ROOM_ID
-        });
+        this.emit('roomCreated', { roomId: this.myId });
         
-        console.log('방 생성 완료, 호스트 ID:', this.myId);
-        
-        return FIXED_ROOM_ID;
+        return this.myId;
     }
 
     // 방 참가 - 다른 플레이어가 호스트 방에 참가하는 함수
-    async joinRoom() {
-        // 고정 방 ID 사용
-        const FIXED_ROOM_ID = 'liargame-fixed-room';
+    async joinRoom(roomId) {
+        if (!roomId) {
+            throw new Error('방 ID가 필요합니다.');
+        }
         
-        console.log('방 참가 시도:', FIXED_ROOM_ID);
+        console.log('방 참가 시도:', roomId);
         
         return new Promise((resolve, reject) => {
             try {
                 // 호스트에게 연결 시도
-                const conn = this.peer.connect(FIXED_ROOM_ID, {
+                const conn = this.peer.connect(roomId, {
                     reliable: true
                 });
                 
@@ -252,7 +148,13 @@ class LiarGame {
                 // 연결 성공 시
                 conn.on('open', () => {
                     clearTimeout(timeout);
-                    console.log('호스트에게 연결 성공:', FIXED_ROOM_ID);
+                    console.log('호스트에게 연결 성공:', roomId);
+                    
+                    // 자신을 방장이 아니라고 설정
+                    this.isHost = false;
+                    
+                    // 방장 ID 저장
+                    this.hostId = roomId;
                     
                     // 연결 리스트에 추가
                     this.connections.push(conn);
@@ -262,17 +164,25 @@ class LiarGame {
                     
                     // 플레이어 정보 전송
                     const playerInfo = this.players.find(p => p.id === this.myId);
-                    conn.send({
-                        type: 'playerJoin',
-                        player: {
-                            id: playerInfo.id,
-                            nickname: playerInfo.nickname,
-                            isHost: playerInfo.isHost
-                        }
-                    });
+                    if (playerInfo) {
+                        playerInfo.isHost = false; // 다시 확인
+                        
+                        conn.send({
+                            type: 'playerJoin',
+                            player: {
+                                id: playerInfo.id,
+                                nickname: playerInfo.nickname,
+                                isHost: playerInfo.isHost
+                            }
+                        });
+                    } else {
+                        console.error('플레이어 정보를 찾을 수 없음');
+                        reject(new Error('플레이어 정보를 찾을 수 없음'));
+                        return;
+                    }
                     
                     // 방 참가 성공 이벤트 발생
-                    this.emit('roomJoined', { roomId: FIXED_ROOM_ID });
+                    this.emit('roomJoined', { roomId: roomId });
                     resolve();
                 });
                 
