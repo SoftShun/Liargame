@@ -1,1011 +1,750 @@
 /* 라이어 게임 스타일시트 */
 /* 미니멀하고 깔끔한 디자인 */
 
-/* 기본 설정 */
+/* 전체 스타일 */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Noto Sans KR', 'Roboto', sans-serif;
+    font-family: 'Noto Sans KR', sans-serif;
 }
 
+/* 기본 스타일 */
 body {
-    background-color: #f5f5f5;
+    background-color: #f5f7fa;
     color: #333;
-    line-height: 1.5;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    padding: 10px;
-    font-size: 14px; /* 기본 폰트 크기 축소 */
 }
 
 .container {
     width: 100%;
-    max-width: 1400px; /* 컨테이너 최대 너비 감소 */
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.12);
-    overflow-y: auto; /* overflow auto에서 overflow-y로 변경 */
-    overflow-x: hidden; /* 가로 스크롤 방지 */
+    max-width: 1200px;
+    min-height: 100vh;
     position: relative;
-    min-height: 500px; /* 최소 높이 감소 */
-    max-height: 90vh; /* 화면 높이의 90%로 제한 */
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
 }
 
 h1, h2, h3, h4 {
+    margin-bottom: 15px;
     color: #333;
-    margin-bottom: 15px; /* 마진 감소 */
 }
 
 h1 {
-    font-size: 28px; /* 크기 축소 */
+    font-size: 2.5rem;
+    text-align: center;
 }
 
 h2 {
-    font-size: 24px; /* 크기 축소 */
+    font-size: 2rem;
 }
 
 h3 {
-    font-size: 18px; /* 크기 축소 */
+    font-size: 1.5rem;
 }
 
 button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 8px 15px; /* 패딩 축소 */
-    border-radius: 5px;
     cursor: pointer;
-    font-size: 15px; /* 크기 축소 */
-    transition: all 0.3s;
-    position: relative; /* 위치 속성 추가 */
-    z-index: 5; /* z-index 추가 */
-    pointer-events: auto; /* 포인터 이벤트 활성화 */
+    border: none;
+    padding: 12px 18px;
+    border-radius: 5px;
+    background-color: #4c6ef5;
+    color: white;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 button:hover {
-    background-color: #45a049;
-    transform: translateY(-1px); /* 호버 효과 축소 */
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    background-color: #3b5bdb;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-    transform: none;
+button:active {
+    transform: translateY(1px);
     box-shadow: none;
 }
 
-input, select {
-    padding: 8px 12px; /* 패딩 축소 */
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px; /* 크기 축소 */
-    width: 100%;
-    margin-bottom: 15px; /* 마진 축소 */
+button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
 }
 
-/* 도움말 버튼 */
+button:active::after {
+    animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(20, 20);
+        opacity: 0;
+    }
+}
+
+button:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
+}
+
+input, select {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 100%;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
 .help-btn-container {
-    position: absolute;
-    top: 25px; /* 위치 조정 */
-    right: 25px;
-    z-index: 100;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
 }
 
 .help-btn {
-    width: 38px; /* 크기 축소 */
-    height: 38px; /* 크기 축소 */
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    background-color: #3498db;
+    background-color: #4c6ef5;
     color: white;
-    font-size: 22px; /* 크기 축소 */
-    font-weight: bold;
+    font-size: 1.5rem;
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.help-btn:hover {
-    background-color: #2980b9;
-    transform: scale(1.05); /* 호버 효과 축소 */
-}
-
-/* 모달 */
+/* 모달 스타일 */
 .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 1001;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+    overflow-y: auto;
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: #fff;
     margin: 5% auto;
-    padding: 30px;
+    padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-    width: 80%;
-    max-width: 800px; /* 최대 너비 감소 */
-    max-height: 85vh;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
     overflow-y: auto;
 }
 
 .close-btn {
-    color: #aaa;
-    float: right;
-    font-size: 28px; /* 크기 축소 */
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
     font-weight: bold;
     cursor: pointer;
 }
 
-.close-btn:hover {
-    color: #333;
+.help-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
 }
 
-.help-section {
-    margin-bottom: 25px; /* 마진 축소 */
+.help-section:last-child {
+    border-bottom: none;
 }
 
 .help-section h3 {
-    color: #3498db;
-    margin-bottom: 12px; /* 마진 축소 */
-    border-bottom: 2px solid #eee;
-    padding-bottom: 6px; /* 패딩 축소 */
+    color: #4c6ef5;
+    margin-bottom: 10px;
 }
 
-.help-section h4 {
-    margin-top: 15px; /* 마진 축소 */
-    margin-bottom: 8px; /* 마진 축소 */
-    font-size: 16px; /* 크기 축소 */
+.help-section ul, .help-section ol {
+    margin-left: 20px;
+    margin-bottom: 15px;
 }
 
-.help-section ol, .help-section ul {
-    margin-left: 25px; /* 마진 축소 */
-    margin-bottom: 12px; /* 마진 축소 */
-}
-
-.help-section li {
-    margin-bottom: 6px; /* 마진 축소 */
-}
-
-/* 로그인 화면 */
+/* 로그인 화면 스타일 */
 #login-screen {
-    padding: 50px; /* 패딩 축소 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#login-screen[style*="display: none"] {
+    opacity: 0;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 800px;
     text-align: center;
+    animation: fadeIn 0.8s ease-in-out;
 }
 
-/* 방 입장 안내 메시지 */
-.join-notice {
-    background-color: #e3f2fd;
-    border: 1px solid #bbdefb;
-    border-radius: 6px;
-    padding: 12px; /* 패딩 축소 */
-    margin-bottom: 20px; /* 마진 축소 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.login-card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* 단순화된 로그인 화면 스타일 */
+.login-simple {
     text-align: center;
-}
-
-.join-notice p {
-    margin: 4px 0; /* 마진 축소 */
-    font-size: 14px; /* 크기 축소 */
-}
-
-.join-notice strong {
-    color: #1976d2;
-    font-size: 16px; /* 크기 축소 */
-}
-
-.login-form {
-    max-width: 400px; /* 최대 너비 축소 */
+    max-width: 500px;
     margin: 0 auto;
+    padding: 20px;
 }
 
-.login-form h2 {
-    margin-bottom: 30px; /* 마진 축소 */
+.login-simple h3 {
+    color: #4c6ef5;
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+}
+
+.login-simple p {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+.login-simple .form-group {
+    margin-bottom: 25px;
+}
+
+.login-simple input {
+    padding: 15px;
+    font-size: 1.1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-simple input:focus {
+    border-color: #4c6ef5;
+    box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.2);
+    outline: none;
+}
+
+.login-simple button {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    width: 100%;
+    background-color: #4c6ef5;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.login-simple button:hover {
+    background-color: #3b5bdb;
+    transform: translateY(-3px);
+}
+
+/* 기존 login-options 스타일은 유지 (하위 호환성) */
+.login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (min-width: 768px) {
+    .login-options {
+        flex-direction: row;
+    }
+}
+
+.option-card {
+    flex: 1;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.option-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.option-card h3 {
+    margin-bottom: 10px;
+    color: #4c6ef5;
+}
+
+.option-card p {
+    margin-bottom: 20px;
+    color: #666;
 }
 
 .form-group {
-    margin-bottom: 20px; /* 마진 축소 */
-    text-align: left;
+    margin-bottom: 15px;
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 6px; /* 마진 축소 */
-    font-weight: 500;
-    font-size: 16px; /* 크기 축소 */
-}
-
-.join-options {
-    margin-top: 25px; /* 마진 축소 */
-    display: flex;
-    justify-content: space-between;
-}
-
-.join-options button {
-    flex: 1;
-    margin: 0 8px; /* 마진 축소 */
-    padding: 12px; /* 패딩 축소 */
-    font-size: 16px; /* 크기 축소 */
-}
-
-/* 로비 화면 */
+/* 로비 화면 스타일 */
 #lobby-screen {
-    padding: 30px; /* 패딩 축소 */
-    padding-top: 60px; /* 헤더 부분 위쪽 여백 축소 */
-    overflow: auto; /* 스크롤 가능하게 */
-    max-height: 90vh; /* 높이 제한 */
+    min-height: 100vh;
+    padding: 20px;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#lobby-screen[style*="display: none"] {
+    opacity: 0;
+}
+
+.lobby-container {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .lobby-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 30px; /* 간격 축소 */
-    min-height: 60px; /* 최소 높이 축소 */
-    position: relative;
-    padding-top: 12px; /* 상단 패딩 축소 */
+    justify-content: space-between;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+@media (min-width: 768px) {
+    .lobby-header {
+        flex-direction: row;
+        text-align: left;
+    }
 }
 
 .room-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    font-size: 16px; /* 크기 축소 */
-    margin-top: 12px; /* 위쪽 여백 축소 */
-    margin-bottom: 12px; /* 아래쪽 여백 축소 */
-    padding-right: 60px; /* 도움말 버튼 공간 축소 */
+    margin-top: 15px;
 }
 
-.room-id {
-    margin-left: 12px; /* 마진 축소 */
-    padding: 6px 12px; /* 패딩 축소 */
-    background-color: #f0f0f0;
-    border-radius: 5px;
-    font-size: 14px; /* 크기 축소 */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    background-color: #f1f8e9;
+    padding: 12px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #7cb342;
+}
+
+.status-icon {
+    color: #7cb342;
+    font-size: 1.3rem;
     font-weight: bold;
+}
+
+.status-text {
+    color: #33691e;
+    font-weight: 500;
+}
+
+.room-id-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.room-id-value {
+    background-color: #e9ecef;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.1rem;
+}
+
+.copy-btn {
+    background-color: #4c6ef5;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.hint {
+    font-size: 0.9rem;
+    color: #6c757d;
 }
 
 .lobby-content {
     display: flex;
-    gap: 30px; /* 간격 축소 */
+    flex-direction: column;
+    gap: 30px;
 }
 
-.players-section {
+@media (min-width: 768px) {
+    .lobby-content {
+        flex-direction: row;
+    }
+}
+
+.players-section, .game-settings-section {
     flex: 1;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.players-list {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 15px; /* 패딩 축소 */
-    max-height: 500px; /* 최대 높이 축소 */
+.players-column {
+    flex: 1;
+    display: block !important;
+    visibility: visible !important;
+    min-height: 300px;
+}
+
+#game-players-list {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: white;
+    min-height: 250px;
+    max-height: 400px;
     overflow-y: auto;
+    margin-bottom: 20px;
+    display: block !important;
 }
 
 .player-item {
     display: flex;
     align-items: center;
-    padding: 8px; /* 패딩 축소 */
-    margin-bottom: 6px; /* 마진 축소 */
-    border-radius: 5px;
-    background-color: #fff;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-    transition: all 0.2s ease;
-    position: relative;
-    border: 1px solid #eee;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    background-color: white;
+    margin-bottom: 5px;
 }
 
-.player-item.host {
-    background-color: #f0f0f0;
+.player-item:last-child {
+    border-bottom: none;
 }
 
-.player-item.my-player {
-    background-color: #f1f8e9;
-    border-left: 2px solid #8bc34a; /* 경계선 축소 */
+.player-name {
+    font-weight: 500;
 }
 
-.player-item.my-player::after {
-    content: '나';
-    position: absolute;
-    right: 8px; /* 위치 조정 */
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 11px; /* 크기 축소 */
-    background-color: #8bc34a;
-    color: white;
-    padding: 1px 5px; /* 패딩 축소 */
-    border-radius: 8px;
-}
-
-.player-nickname {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 14px; /* 크기 축소 */
-}
-
-.player-score {
-    margin-right: 12px; /* 마진 축소 */
-    color: #666;
-    font-size: 14px; /* 크기 축소 */
-}
-
-.player-status {
-    color: #4CAF50;
-    font-size: 14px; /* 크기 축소 */
+.host-badge {
+    background-color: #ffd43b;
+    color: #212529;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.8rem;
     font-weight: bold;
 }
 
-.game-settings {
-    flex: 2;
-}
-
 .settings-form {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 25px; /* 패딩 축소 */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-.start-game-btn {
-    margin-top: 25px; /* 마진 축소 */
-    width: 100%;
-    padding: 12px; /* 패딩 축소 */
-    font-size: 18px; /* 크기 축소 */
-}
-
-/* 방 공유 버튼 */
 .share-btn {
-    margin-top: 12px; /* 마진 축소 */
-    width: 100%;
-    padding: 10px; /* 패딩 축소 */
-    font-size: 14px; /* 크기 축소 */
-    background-color: #3498db;
+    background-color: #20c997;
+    margin-top: 10px;
 }
 
 .share-btn:hover {
-    background-color: #2980b9;
+    background-color: #12b886;
 }
 
-/* 게임 화면 */
+/* 게임 화면 스타일 */
 #game-screen {
+    min-height: 100vh;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    height: 90vh; /* 높이 축소 */
-    padding: 25px; /* 패딩 축소 */
-    padding-top: 60px; /* 상단 패딩 축소 */
-    overflow: auto; /* 스크롤 가능하게 */
-    position: relative; /* 위치 속성 추가 */
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#game-screen[style*="display: none"] {
+    opacity: 0;
 }
 
 .game-header {
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 15px; /* 패딩 축소 */
-    background-color: #f0f0f0;
-    border-radius: 8px;
-    margin-bottom: 15px; /* 마진 축소 */
-    border: 1px solid #ddd;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) {
+    .game-header {
+        flex-direction: row;
+    }
 }
 
 .category-word {
-    font-size: 20px; /* 크기 축소 */
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     font-weight: bold;
 }
 
-.category-word .liar {
-    color: #e74c3c;
-    font-size: 20px; /* 크기 축소 */
-}
-
-.category-word .spy {
-    color: #9b59b6;
-    margin-top: 6px; /* 마진 축소 */
-    font-size: 16px; /* 크기 축소 */
+.liar, .spy {
+    color: #e03131;
+    font-weight: bold;
 }
 
 .turn-display {
-    padding: 8px 12px; /* 패딩 축소 */
-    background-color: #4CAF50;
-    color: white;
-    border-radius: 5px;
-    font-size: 16px; /* 크기 축소 */
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #4c6ef5;
+    margin-top: 10px;
 }
 
 .game-content {
     display: flex;
-    flex: 1;
-    gap: 15px; /* 간격 축소 */
-    margin-bottom: 25px; /* 마진 축소 */
-    width: 100%;
-    min-height: 400px; /* 최소 높이 축소 */
-    flex-wrap: nowrap; /* 화면 크기가 작아져도 래핑 방지 */
+    flex-direction: column;
+    gap: 20px;
+    flex-grow: 1;
+}
+
+@media (min-width: 992px) {
+    .game-content {
+        flex-direction: row;
+    }
+}
+
+.players-column, .main-column, .right-column {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .players-column {
-    flex: 0.8;
-    background-color: #f0f0f0;
-    border-radius: 8px;
-    padding: 12px; /* 패딩 축소 */
-    overflow-y: auto;
-    min-height: 350px; /* 높이 축소 */
-    max-height: 450px; /* 최대 높이 축소 */
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    min-width: 150px; /* 최소 너비 설정 */
-}
-
-/* 플레이어 리스트 확실하게 표시 */
-.players-list {
-    min-height: 250px; /* 최소 높이 축소 */
-}
-
-.turn-order {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 22px; /* 크기 축소 */
-    height: 22px; /* 크기 축소 */
-    line-height: 22px; /* 크기 축소 */
-    text-align: center;
-    background-color: #ddd;
-    color: #333;
-    border-radius: 50%;
-    margin-right: 8px; /* 마진 축소 */
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
-.player-item.current-turn {
-    background-color: #e8f5e9;
-    border-left: 3px solid #4CAF50; /* 경계선 축소 */
-    font-weight: bold;
-    transform: scale(1.02); /* 확대 효과 축소 */
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-}
-
-.player-item.current-turn .player-nickname {
-    color: #2e7d32;
-}
-
-.player-item.current-turn .turn-order {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.player-item.liar-guess {
-    background-color: #ffebee;
-    border-left: 3px solid #e74c3c; /* 경계선 축소 */
-    font-weight: bold;
+    flex: 1;
 }
 
 .main-column {
-    flex: 2.5;
+    flex: 2;
     display: flex;
     flex-direction: column;
-    min-width: 300px; /* 최소 너비 설정 */
-}
-
-.chat-messages, #free-chat-messages {
-    flex: 1;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 12px; /* 패딩 축소 */
-    overflow-y: auto;
-    margin-bottom: 12px; /* 마진 축소 */
-    min-height: 300px; /* 최소 높이 축소 */
-    max-height: 450px; /* 최대 높이 축소 */
-    position: relative; /* 위치 속성 추가 */
-    z-index: 1; /* 채팅 메시지 영역의 z-index 낮게 설정 */
-}
-
-.chat-message, .turn-message, .system-message, .free-chat-message {
-    margin-bottom: 10px; /* 마진 축소 */
-    padding: 8px 10px; /* 패딩 축소 */
-    border-radius: 5px;
-    font-size: 14px; /* 크기 축소 */
-    word-break: break-word;
-}
-
-.chat-message {
-    background-color: #e8f5e9;
-}
-
-.turn-message {
-    background-color: #e3f2fd;
-    font-weight: 500;
-}
-
-.system-message {
-    background-color: #f0f0f0;
-    color: #666;
-    font-style: italic;
-    text-align: center;
-}
-
-.free-chat-message {
-    background-color: #fff8e1;
-}
-
-.nickname {
-    font-weight: bold;
-    margin-right: 6px; /* 마진 축소 */
-}
-
-.chat-input-area {
-    display: flex;
-    gap: 8px; /* 간격 축소 */
-    position: relative; /* 위치 속성 추가 */
-    z-index: 10; /* z-index 추가 */
-}
-
-.chat-input-area input {
-    flex: 1;
-    font-size: 14px; /* 크기 축소 */
-    padding: 8px 10px; /* 패딩 축소 */
-    position: relative; /* 위치 속성 추가 */
-}
-
-.chat-input-area button {
-    min-width: 70px; /* 최소 너비 축소 */
-    font-size: 14px; /* 크기 축소 */
-    padding: 8px; /* 패딩 축소 */
-    position: relative; /* 위치 속성 추가 */
-    z-index: 11; /* z-index 추가 */
-    pointer-events: auto; /* 포인터 이벤트 활성화 */
 }
 
 .right-column {
     flex: 1.5;
     display: flex;
     flex-direction: column;
-    min-width: 230px; /* 최소 너비 설정 */
+    gap: 20px;
 }
 
-#vote-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 12px; /* 패딩 축소 */
-    margin-bottom: 15px; /* 마진 축소 */
+.player-turn-active {
+    background-color: #e7f5ff;
+    border-left: 4px solid #4c6ef5;
+    font-weight: bold;
+}
+
+.current-turn {
+    background-color: #e7f5ff;
+    border-left: 4px solid #4c6ef5;
+    animation: highlight-pulse 2s infinite;
+}
+
+@keyframes highlight-pulse {
+    0% { background-color: #e7f5ff; }
+    50% { background-color: #d0ebff; }
+    100% { background-color: #e7f5ff; }
+}
+
+.chat-messages, #free-chat-messages, #turn-messages {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    background-color: white;
+    margin-bottom: 15px;
+    scrollbar-width: thin;
+    scrollbar-color: #adb5bd transparent;
+}
+
+.chat-messages::-webkit-scrollbar, 
+#free-chat-messages::-webkit-scrollbar, 
+#turn-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track, 
+#free-chat-messages::-webkit-scrollbar-track, 
+#turn-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb, 
+#free-chat-messages::-webkit-scrollbar-thumb, 
+#turn-messages::-webkit-scrollbar-thumb {
+    background-color: #adb5bd;
+    border-radius: 3px;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.chat-input-area input {
+    flex-grow: 1;
+    margin-bottom: 0;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chat-input-area input:focus {
+    border-color: #4c6ef5;
+    box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.2);
+    outline: none;
+}
+
+.chat-input-area button {
+    min-width: 70px;
+}
+
+#vote-section, #vote-result, #game-result, #free-chat {
+    margin-bottom: 15px;
+}
+
+#vote-players-list {
+    margin: 15px 0;
 }
 
 .timer {
+    color: #e03131;
     font-weight: bold;
-    color: #e74c3c;
-    margin-bottom: 15px; /* 마진 축소 */
-    text-align: center;
-    font-size: 16px; /* 크기 축소 */
+    margin: 10px 0;
 }
 
-.vote-player-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px; /* 패딩 축소 */
-    border-bottom: 1px solid #eee;
-    font-size: 14px; /* 크기 축소 */
-}
-
-.vote-player-item:last-child {
-    border-bottom: none;
-}
-
-.vote-player-item.voted {
-    background-color: #e8f5e9;
-}
-
-.vote-btn {
-    padding: 6px 12px; /* 패딩 축소 */
-    font-size: 14px; /* 크기 축소 */
-    min-width: 70px; /* 최소 너비 축소 */
-    position: relative; /* 위치 속성 추가 */
-    z-index: 11; /* z-index 추가 */
-    pointer-events: auto; /* 포인터 이벤트 활성화 */
-}
-
-#vote-result, #game-result {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 12px; /* 패딩 축소 */
-    margin-bottom: 15px; /* 마진 축소 */
-    overflow-y: auto; /* 내용이 많을 경우 스크롤 가능하게 */
-}
-
-.vote-table, .score-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 15px; /* 마진 축소 */
-    font-size: 14px; /* 크기 축소 */
-}
-
-.vote-table th, .vote-table td,
-.score-table th, .score-table td {
-    border: 1px solid #ddd;
-    padding: 10px; /* 패딩 축소 */
-    text-align: left;
-}
-
-.vote-table th, .score-table th {
-    background-color: #f0f0f0;
-    font-weight: bold;
-}
-
-.vote-summary {
-    margin-top: 15px; /* 마진 축소 */
-}
-
-.vote-summary ul {
-    list-style-type: none;
-}
-
-.vote-summary li {
-    padding: 6px 0; /* 패딩 축소 */
-    font-size: 14px; /* 크기 축소 */
-}
-
-.result-info {
-    margin-bottom: 20px; /* 마진 축소 */
-    padding: 15px; /* 패딩 축소 */
-    background-color: #f0f0f0;
-    border-radius: 6px;
-    font-size: 14px; /* 크기 축소 */
-}
-
-.winner-info {
-    font-size: 20px; /* 크기 축소 */
-    font-weight: bold;
-    text-align: center;
-    margin-top: 12px; /* 마진 축소 */
-    padding: 8px; /* 패딩 축소 */
-}
-
-.liar-win {
-    color: #e74c3c;
-}
-
-.citizens-win {
-    color: #3498db;
-}
-
-.correct-guess {
-    color: #27ae60;
-}
-
-.wrong-guess {
-    color: #e74c3c;
-}
-
-.my-score {
-    background-color: #e8f5e9;
-    font-weight: bold;
-}
-
-#spectator-list {
-    margin-top: 20px; /* 마진 축소 */
-    padding: 15px; /* 패딩 축소 */
-    background-color: #f0f0f0;
-    border-radius: 8px;
-}
-
-#spectator-list ul {
-    list-style-type: none;
-    margin-left: 8px; /* 마진 축소 */
-}
-
-#spectator-list li {
-    padding: 6px 0; /* 패딩 축소 */
-    font-size: 14px; /* 크기 축소 */
-}
-
-#free-chat {
-    flex: 1;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 12px; /* 패딩 축소 */
-    display: flex;
-    flex-direction: column;
-    min-height: 180px; /* 최소 높이 축소 */
-}
-
-#free-chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 12px; /* 마진 축소 */
-    min-height: 100px; /* 최소 높이 축소 */
-    max-height: 180px; /* 최대 높이 축소 */
-    background-color: #fff;
-    border-radius: 6px;
-    padding: 8px; /* 패딩 축소 */
-    border: 1px solid #eee;
-}
-
-#restart-game-btn {
-    width: 100%;
-    margin-top: 20px; /* 마진 축소 */
-    padding: 12px; /* 패딩 축소 */
-    font-size: 16px; /* 크기 축소 */
-    background-color: #3498db;
-}
-
-#restart-game-btn:hover {
-    background-color: #2980b9;
-}
-
-/* 반응형 디자인 개선 */
-/* 화면 크기가 줄어들어도 레이아웃 유지하면서 크기만 축소 */
-@media (max-width: 1400px) {
-    .container {
-        max-width: 98%;
-    }
-    
-    .game-content {
-        gap: 12px;
-    }
-}
-
-@media (max-width: 1200px) {
-    .container {
-        max-width: 98%;
-    }
-    
-    body {
-        font-size: 14px;
-        padding: 8px;
-    }
-    
-    /* 레이아웃 유지 */
-    .game-content {
-        flex-wrap: nowrap; /* 래핑 방지 */
-    }
-    
-    .players-column, .main-column, .right-column {
-        min-width: 0; /* 너무 작아지지 않도록 최소 너비 제거 */
-        flex-shrink: 1; /* 크기 축소 허용 */
-    }
-}
-
-@media (max-width: 992px) {
-    /* 992px 이하에서도 레이아웃 유지 */
-    .game-content {
-        flex-direction: row; /* 가로 배치 유지 */
-        flex-wrap: nowrap; /* 래핑 방지 */
-    }
-    
-    .players-column {
-        flex: 0.7; /* 비율 조정 */
-    }
-    
-    .main-column {
-        flex: 2; /* 비율 조정 */
-    }
-    
-    .right-column {
-        flex: 1.3; /* 비율 조정 */
-    }
-}
-
-/* 아주 작은 화면에서만 세로 배치로 변경 (768px 이하) */
-@media (max-width: 768px) {
-    .container {
-        width: 100%;
-        margin: 0;
-        border-radius: 0;
-        max-height: none;
-        height: auto;
-        overflow: auto;
-    }
-    
-    #game-screen {
-        height: auto;
-        min-height: 100vh;
-    }
-    
-    .game-content {
-        flex-direction: column;
-        flex-wrap: wrap;
-    }
-    
-    .players-column, .main-column, .right-column {
-        width: 100%;
-        min-width: 100%;
-    }
-}
-
-#game-screen .players-column h3 {
-    background-color: #4CAF50;
-    color: white;
-    padding: 8px; /* 패딩 축소 */
-    border-radius: 5px;
-    margin-top: 0;
-    margin-bottom: 12px; /* 마진 축소 */
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    font-size: 16px; /* 크기 축소 */
-}
-
-#game-screen .players-list {
-    border: 1px solid #ddd;
-    background-color: white;
-    border-radius: 6px;
-    padding: 8px; /* 패딩 축소 */
-    overflow-y: auto;
-    min-height: 250px; /* 최소 높이 축소 */
-    max-height: 350px; /* 최대 높이 축소 */
-}
-
-.connection-info {
-    margin-top: 15px; /* 마진 축소 */
-    padding: 8px; /* 패딩 축소 */
-    background-color: #f5f5f5;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-    text-align: center;
-}
-
-.connection-info p {
-    margin: 4px 0; /* 마진 축소 */
-}
-
-#room-id {
-    font-weight: bold;
-    color: #4CAF50;
-    padding: 2px 5px; /* 패딩 축소 */
-    background-color: #f0f0f0;
-    border-radius: 3px;
-    margin-right: 4px; /* 마진 축소 */
-    border: 1px solid #ccc;
-}
-
-.copy-btn {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    padding: 2px 6px; /* 패딩 축소 */
-    cursor: pointer;
-    font-size: 0.75em; /* 크기 축소 */
-    transition: background-color 0.3s;
-}
-
-.copy-btn:hover {
-    background-color: #45a049;
-}
-
-.room-join-section {
-    margin-top: 12px; /* 마진 축소 */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.room-join-section input {
-    width: 100%;
-    padding: 6px; /* 패딩 축소 */
-    margin-bottom: 8px; /* 마진 축소 */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.room-join-section button {
-    background-color: #2196F3;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px; /* 패딩 축소 */
-    cursor: pointer;
-}
-
-.room-join-section button:hover {
-    background-color: #0b7dda;
-}
-
-/* 게임 시작/종료 팝업 스타일 */
+/* 팝업 스타일 */
 .game-popup {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8);
     z-index: 1000;
+    align-items: center;
+    justify-content: center;
     opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
+    transition: opacity 0.5s ease;
 }
 
 .game-popup.active {
+    display: flex;
     opacity: 1;
-    visibility: visible;
 }
 
 .popup-content {
-    background-color: #fff;
+    background-color: white;
     padding: 30px;
     border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     text-align: center;
     max-width: 500px;
-    width: 80%;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    animation: popIn 0.5s forwards;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    70% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 .popup-content h2 {
-    margin-top: 0;
-    color: #4CAF50;
-    font-size: 26px;
+    color: #4c6ef5;
+    margin-bottom: 20px;
+    font-size: 2.2rem;
 }
 
-#popup-category-word {
-    font-size: 20px;
-    margin: 15px 0;
+#popup-category-word, #popup-role-info {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
 }
 
-#popup-role-info {
-    font-size: 18px;
-    margin: 15px 0;
-}
-
-#popup-role-info.liar {
-    color: #e74c3c;
-    font-weight: bold;
-}
-
-#popup-role-info.spy {
-    color: #9b59b6;
-    font-weight: bold;
-}
-
-#end-result-info {
-    font-size: 16px;
-    margin-bottom: 5px;
-}
-
-#countdown-timer {
-    font-size: 14px;
-    margin: 5px 0;
-    font-weight: bold;
-    color: #3498db;
-    text-align: center;
-}
-
-/* 카운트다운 UI 개선 */
+/* 카운트다운 스타일 */
 .countdown-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 15px 0;
+    margin: 20px auto;
+    text-align: center;
 }
 
 .countdown-number {
-    font-size: 60px;
+    font-size: 5rem;
     font-weight: bold;
-    color: #3498db;
-    margin: 10px 0;
-    transition: transform 0.3s ease, color 0.3s ease;
-    width: 100px;
-    height: 100px;
-    line-height: 100px;
-    text-align: center;
-    border-radius: 50%;
-    background-color: #f0f0f0;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
+    color: #4c6ef5;
+    margin-bottom: 20px;
+    display: inline-block;
+    transition: transform 0.3s ease-in-out;
 }
 
 .countdown-number.pulse {
@@ -1014,122 +753,127 @@ input, select {
 
 @keyframes pulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
+    50% { transform: scale(1.5); }
     100% { transform: scale(1); }
 }
 
 .countdown-progress-container {
-    width: 80%;
+    width: 100%;
     height: 10px;
-    background-color: #eee;
+    background-color: #e9ecef;
     border-radius: 5px;
-    margin: 15px 0;
     overflow: hidden;
-    position: relative;
+    margin-bottom: 20px;
 }
 
 .countdown-progress-bar {
-    width: 100%;
     height: 100%;
-    background: linear-gradient(to right, #3498db, #2ecc71);
-    border-radius: 5px;
-    transition: width 0.2s linear;
-    position: absolute;
-    top: 0;
-    left: 0;
+    background-color: #4c6ef5;
+    width: 100%;
+    transition: width 1s linear;
 }
-
-/* 색상 변화 애니메이션 */
-.countdown-number[data-count="5"] { color: #2ecc71; } /* 녹색 */
-.countdown-number[data-count="4"] { color: #27ae60; }
-.countdown-number[data-count="3"] { color: #f39c12; }
-.countdown-number[data-count="2"] { color: #e67e22; }
-.countdown-number[data-count="1"] { color: #e74c3c; } /* 빨간색 */
 
 #countdown-timer {
-    font-size: 18px;
-    margin: 5px 0;
+    font-size: 1.5rem;
+    color: #495057;
+    margin-top: 10px;
+}
+
+/* 메시지 스타일 개선 */
+.message {
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 5px;
+    animation: messageFadeIn 0.3s ease-in-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes messageFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.system-message {
+    background-color: #f1f3f5;
+    color: #495057;
+    text-align: center;
+    font-style: italic;
+    border-left: 3px solid #adb5bd;
+}
+
+.chat-message {
+    background-color: #f8f9fa;
+    border-left: 3px solid #dee2e6;
+}
+
+.my-message {
+    background-color: #e7f5ff;
+    text-align: right;
+    border-right: 3px solid #4c6ef5;
+    border-left: none;
+}
+
+.turn-message {
+    background-color: #fff4e6;
+    border-left: 3px solid #ff922b;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 5px;
+    animation: turnMessageFadeIn 0.5s ease-in-out;
+}
+
+@keyframes turnMessageFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.turn-message .nickname {
     font-weight: bold;
-    color: #3498db;
-    text-align: center;
+    color: #e8590c;
 }
 
-/* 게임 종료 카운트다운 팝업 스타일 - 상단에 작게 표시 */
-#game-end-countdown {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: auto;
-    background-color: transparent;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    justify-content: center;
-    align-items: flex-start;
-    pointer-events: none; /* 아래 요소들과 상호작용 가능하도록 */
-}
-
-#game-end-countdown.active {
-    opacity: 1;
-    visibility: visible;
-    display: flex;
-}
-
-#game-end-countdown .popup-content {
-    background-color: rgba(255, 255, 255, 0.95);
-    padding: 10px 20px;
-    border-radius: 0 0 10px 10px;
-    text-align: center;
-    max-width: 300px;
-    width: auto;
-    margin: 0 auto;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    pointer-events: auto; /* 팝업 내용은 클릭 가능하게 */
-}
-
-#game-end-countdown h2 {
-    font-size: 18px;
-    margin: 0 0 5px 0;
-}
-
-#game-end-countdown #end-result-info {
-    font-size: 16px;
-    margin-bottom: 5px;
-}
-
-#game-end-countdown .countdown-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 5px;
-}
-
-#game-end-countdown .countdown-number {
-    font-size: 24px;
+.message-sender {
     font-weight: bold;
-    width: 36px;
-    height: 36px;
-    line-height: 36px;
-    text-align: center;
-    background-color: #3498db;
-    color: white;
-    border-radius: 50%;
+    margin-right: 5px;
 }
 
-#game-end-countdown .countdown-progress-container {
-    height: 8px;
-    flex-grow: 1;
-    background-color: #eaeaea;
-    border-radius: 4px;
-    overflow: hidden;
-    max-width: 150px;
+.message-content {
+    word-break: break-word;
 }
 
-#game-end-countdown #countdown-timer {
-    font-size: 14px;
-    margin: 0;
+.message-time {
+    font-size: 0.8rem;
+    color: #868e96;
+    margin-left: 5px;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 767px) {
+    h1 {
+        font-size: 2rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    h3 {
+        font-size: 1.2rem;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    .login-card {
+        padding: 20px;
+    }
+    
+    .game-content {
+        gap: 15px;
+    }
+    
+    .chat-messages, #free-chat-messages, #turn-messages {
+        height: 200px;
+    }
 }

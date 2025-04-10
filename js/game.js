@@ -111,18 +111,20 @@ class LiarGame {
     }
     
     // 방 생성 - 호스트가 방을 만드는 함수 (단순히 ID 반환)
-    createRoom() {
+    createRoom(roomId = null) {
         if (!this.isHost) {
             console.error('방장만 방을 생성할 수 있습니다.');
             return null;
         }
         
-        console.log('방 생성 완료, 방 ID:', this.myId);
+        // 지정된 방 ID가 있으면 사용, 없으면 자신의 ID 사용
+        const actualRoomId = roomId || this.myId;
+        console.log('방 생성 완료, 방 ID:', actualRoomId);
         
         // 방 생성 성공 이벤트 발생
-        this.emit('roomCreated', { roomId: this.myId });
+        this.emit('roomCreated', { roomId: actualRoomId });
         
-        return this.myId;
+        return actualRoomId;
     }
 
     // 방 참가 - 다른 플레이어가 호스트 방에 참가하는 함수

@@ -97,7 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let myId = null;
     let isFirstPlayer = false;
     let roomId = null;
-    const DEFAULT_ROOM_ID = 'liargame-shared-room';
+    // 고정된 방 ID를 사용하여 모든 사용자가 같은 방에 접속하도록 합니다
+    const DEFAULT_ROOM_ID = 'liargame-global-room';
     
     // 초기 화면 설정
     loginScreen.style.display = 'block';
@@ -107,7 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 버튼 초기 비활성화
     startGameBtn.disabled = true;
     
-    // 새 방 만들기 버튼
+    // 로그인 UI 수정 (HTML이 바뀌어야 함)
+    // 게임 참가하기 버튼 (기존 createRoomBtn 재사용)
+    createRoomBtn.textContent = '게임 참가하기';
     createRoomBtn.addEventListener('click', async () => {
         const nickname = nicknameInput.value.trim();
         
@@ -117,33 +120,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         createRoomBtn.disabled = true;
-        joinRoomBtn.disabled = true;
-        createRoomBtn.textContent = '방 생성 중...';
+        if (joinRoomBtn) joinRoomBtn.disabled = true; // 없어질 버튼이지만 안전하게 처리
+        createRoomBtn.textContent = '접속 중...';
         
         try {
             console.log('게임 초기화 시작');
             // 게임 초기화
             myId = await game.init(nickname);
             
+            // 이벤트 리스너 설정
+            setupGameListeners();
+            
+            // 기본 방 입장 시도
+            try {
+                console.log('기본 방 입장 시도:', DEFAULT_ROOM_ID);
+                // 먼저 기본 방 입장 시도
+                await game.joinRoom(DEFAULT_ROOM_ID);
+                roomId = DEFAULT_ROOM_ID;
+                isFirstPlayer = false; // 기본적으로 방장 아님
+                console.log('기존 방 입장 성공');
+            } catch (joinError) {
+                console.log('기존 방 입장 실패, 새 방 생성:', joinError.message);
+                // 입장 실패 시 방 생성
+                roomId = game.createRoom(DEFAULT_ROOM_ID);
+                isFirstPlayer = true; // 첫 번째 플레이어는 방장
+                console.log('새 방 생성 완료, 방 ID:', roomId);
+            }
+            
             // 로그인 화면 숨기고 로비 화면 표시
             loginScreen.style.display = 'none';
             lobbyScreen.style.display = 'block';
             
-            // 이벤트 리스너 설정
-            setupGameListeners();
-            
-            // 방 생성
-            roomId = game.createRoom();
-            console.log('방 생성 완료, 방 ID:', roomId);
-            
-            // 방 ID 표시
-            document.getElementById('room-id-display').textContent = roomId;
-            document.getElementById('room-id-container').style.display = 'block';
-            
-            // 첫 번째 플레이어는 자동으로 방장
-            isFirstPlayer = true;
-            startGameBtn.disabled = false;
-            gameModeSelect.disabled = false;
+            // 방장 여부에 따라 시작 버튼 활성화
+            startGameBtn.disabled = !game.isHost;
+            gameModeSelect.disabled = !game.isHost;
             
             // 플레이어 목록 업데이트
             updatePlayersList();
@@ -151,82 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('게임 초기화 및 방 설정 완료');
         } catch (error) {
             createRoomBtn.disabled = false;
-            joinRoomBtn.disabled = false;
-            createRoomBtn.textContent = '새 방 만들기';
-            
-            console.error('게임 초기화 실패:', error);
-            alert('방 생성에 실패했습니다: ' + error.message);
-        }
-    });
-    
-    // 방 참여 버튼
-    joinRoomBtn.addEventListener('click', async () => {
-        const nickname = nicknameInput.value.trim();
-        const inputRoomId = roomIdInput.value.trim();
-        
-        if (nickname.length < 1 || nickname.length > 6) {
-            alert('닉네임은 1자 이상 6자 이하로 입력해주세요.');
-            return;
-        }
-        
-        if (!inputRoomId) {
-            alert('방 ID를 입력해주세요.');
-            return;
-        }
-        
-        createRoomBtn.disabled = true;
-        joinRoomBtn.disabled = true;
-        joinRoomBtn.textContent = '참여 중...';
-        
-        try {
-            console.log('게임 초기화 시작');
-            // 게임 초기화
-            myId = await game.init(nickname);
-            
-            // 로그인 화면 숨기고 로비 화면 표시
-            loginScreen.style.display = 'none';
-            lobbyScreen.style.display = 'block';
-            
-            // 이벤트 리스너 설정
-            setupGameListeners();
-            
-            // 기존 방 입장 시도
-            try {
-                // 입력된 방 ID로 입장 시도
-                console.log('방 입장 시도:', inputRoomId);
-                await game.joinRoom(inputRoomId);
-                console.log('방 입장 성공');
-                
-                // 방 ID 저장
-                roomId = inputRoomId;
-                
-                // 일반 플레이어는 게임 시작/설정 버튼 비활성화
-                isFirstPlayer = false;
-                startGameBtn.disabled = true;
-                gameModeSelect.disabled = true;
-                
-                // 플레이어 목록 업데이트
-                updatePlayersList();
-            } catch (joinError) {
-                console.error('방 입장 실패:', joinError.message);
-                
-                // 오류 메시지 표시
-                alert('방 입장에 실패했습니다: ' + joinError.message);
-                
-                // 로그인 화면으로 돌아가기
-                createRoomBtn.disabled = false;
-                joinRoomBtn.disabled = false;
-                joinRoomBtn.textContent = '방 참여하기';
-                loginScreen.style.display = 'block';
-                lobbyScreen.style.display = 'none';
-                return;
-            }
-            
-            console.log('게임 초기화 및 방 설정 완료');
-        } catch (error) {
-            createRoomBtn.disabled = false;
-            joinRoomBtn.disabled = false;
-            joinRoomBtn.textContent = '방 참여하기';
+            if (joinRoomBtn) joinRoomBtn.disabled = false;
+            createRoomBtn.textContent = '게임 참가하기';
             
             console.error('게임 초기화 실패:', error);
             
@@ -243,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error.type === 'network' || error.message && error.message.includes('network')) {
                 errorMessage += '네트워크 연결을 확인해주세요.';
             } else if (error.type === 'peer-unavailable') {
-                errorMessage += '존재하지 않는 방입니다.';
+                errorMessage += '게임 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
             } else if (error.type === 'unavailable-id') {
                 errorMessage += '이미 사용 중인 ID입니다.';
             } else if (error.message && error.message.includes('시간 초과')) {
@@ -263,6 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(errorMessage);
         }
     });
+    
+    // 방 참여 버튼 이벤트 리스너 제거 (필요 없어짐)
+    if (joinRoomBtn) {
+        joinRoomBtn.removeEventListener('click', joinRoomBtn.clickHandler);
+        joinRoomBtn.style.display = 'none';
+    }
     
     // 게임 시작 버튼 클릭
     startGameBtn.addEventListener('click', () => {
@@ -447,72 +389,84 @@ document.addEventListener('DOMContentLoaded', () => {
         game.on('gameStarted', data => {
             console.log('게임 시작:', data);
             
-            // 화면 전환
-            lobbyScreen.style.display = 'none';
-            gameScreen.style.display = 'block';
-            
-            // 게임 정보 표시
-            categoryDisplay.textContent = `카테고리: ${data.category}`;
-            
-            if (data.isLiar) {
-                wordDisplay.textContent = '당신은 라이어입니다!';
-                wordDisplay.classList.add('liar');
-            } else {
-                wordDisplay.textContent = `단어: ${data.word}`;
-                wordDisplay.classList.remove('liar');
-            }
-            
-            if (data.isSpy) {
-                const spyInfo = document.createElement('div');
-                spyInfo.textContent = '당신은 스파이입니다! 정답을 알고 있지만, 들키지 않도록 조심하세요.';
-                spyInfo.classList.add('spy');
-                wordDisplay.appendChild(spyInfo);
-            }
-            
-            // 시작 팝업 내용 설정
-            const popupCategoryWord = document.getElementById('popup-category-word');
-            const popupRoleInfo = document.getElementById('popup-role-info');
-            
-            popupCategoryWord.textContent = `카테고리: ${data.category}`;
-            
-            if (data.isLiar) {
-                popupRoleInfo.textContent = '당신은 라이어입니다!';
-                popupRoleInfo.className = 'liar';
-            } else if (data.isSpy) {
-                popupRoleInfo.textContent = `단어: ${data.word} (스파이)`;
-                popupRoleInfo.className = 'spy';
-            } else {
-                popupRoleInfo.textContent = `단어: ${data.word}`;
-                popupRoleInfo.className = '';
-            }
-            
-            // 시작 팝업 표시
-            const gameStartPopup = document.getElementById('game-start-popup');
-            gameStartPopup.classList.add('active');
-            
-            // 4초 후 팝업 숨기기
+            // 화면 전환 (타이밍 개선)
             setTimeout(() => {
-                gameStartPopup.classList.remove('active');
-            }, 4000);
+                lobbyScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                
+                // 게임 정보 표시
+                categoryDisplay.textContent = `카테고리: ${data.category}`;
+                
+                if (data.isLiar) {
+                    wordDisplay.textContent = '당신은 라이어입니다!';
+                    wordDisplay.classList.add('liar');
+                } else {
+                    wordDisplay.textContent = `단어: ${data.word}`;
+                    wordDisplay.classList.remove('liar');
+                }
+                
+                if (data.isSpy) {
+                    const spyInfo = document.createElement('div');
+                    spyInfo.textContent = '당신은 스파이입니다! 정답을 알고 있지만, 들키지 않도록 조심하세요.';
+                    spyInfo.classList.add('spy');
+                    wordDisplay.appendChild(spyInfo);
+                }
+                
+                // 시작 팝업 내용 설정
+                const popupCategoryWord = document.getElementById('popup-category-word');
+                const popupRoleInfo = document.getElementById('popup-role-info');
+                
+                popupCategoryWord.textContent = `카테고리: ${data.category}`;
+                
+                if (data.isLiar) {
+                    popupRoleInfo.textContent = '당신은 라이어입니다!';
+                    popupRoleInfo.className = 'liar';
+                } else if (data.isSpy) {
+                    popupRoleInfo.textContent = `단어: ${data.word} (스파이)`;
+                    popupRoleInfo.className = 'spy';
+                } else {
+                    popupRoleInfo.textContent = `단어: ${data.word}`;
+                    popupRoleInfo.className = '';
+                }
+                
+                // 시작 팝업 표시
+                const gameStartPopup = document.getElementById('game-start-popup');
+                gameStartPopup.classList.add('active');
+                
+                // 4초 후 팝업 숨기기
+                setTimeout(() => {
+                    gameStartPopup.classList.remove('active');
+                }, 4000);
+                
+                // 턴 순서 표시
+                console.log('턴 순서 데이터:', data.turnOrder);
+                
+                // 플레이어 컬럼이 보이는지 확인 및 강제로 표시
+                const playersColumn = document.querySelector('.players-column');
+                if (playersColumn) {
+                    playersColumn.style.display = 'block';
+                    playersColumn.style.visibility = 'visible';
+                }
+                
+                // 플레이어 순서 업데이트
+                updateTurnOrder(data.turnOrder);
+                
+                // 채팅창 초기화
+                chatMessages.innerHTML = '';
+                freeChatMessages.innerHTML = '';
+                showSystemMessage('게임이 시작되었습니다.');
+                
+                // 투표 섹션 초기화
+                voteSection.style.display = 'none';
+                voteResultDisplay.innerHTML = '';
+                gameResultDisplay.innerHTML = '';
+            }, 100); // 약간의 지연을 주어 DOM이 제대로 업데이트되도록 함
             
-            // 턴 순서 표시
-            console.log('턴 순서 데이터:', data.turnOrder);
-            
-            // 플레이어 컬럼이 보이는지 확인 및 강제로 표시
-            const playersColumn = document.querySelector('.players-column');
-            if (playersColumn) {
-                playersColumn.style.display = 'block';
-                playersColumn.style.visibility = 'visible';
-            }
-            
-            // 플레이어 순서 업데이트
-            updateTurnOrder(data.turnOrder);
-            
-            // 턴 순서가 보이는지 확인
+            // 턴 순서가 보이는지 확인 - 시간을 더 늘려 확실히 렌더링되도록 함
             setTimeout(() => {
                 const gamePlayersList = document.querySelector('#game-screen .players-list');
-                if (gamePlayersList && gamePlayersList.children.length === 0) {
-                    console.warn('플레이어 목록이 비어있습니다. 수동으로 추가합니다.');
+                if (gamePlayersList && (gamePlayersList.children.length === 0 || gamePlayersList.offsetHeight === 0)) {
+                    console.warn('플레이어 목록이 비어있거나 보이지 않습니다. 수동으로 추가합니다.');
                     
                     // 임시 데이터로 강제 표시
                     const tempPlayers = [];
@@ -532,28 +486,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     
                     updateTurnOrder(tempPlayers);
+                    
+                    // 플레이어 리스트 강제 스타일 적용
+                    if (gamePlayersList) {
+                        gamePlayersList.style.display = 'block';
+                        gamePlayersList.style.visibility = 'visible';
+                        gamePlayersList.style.height = 'auto';
+                        gamePlayersList.style.minHeight = '200px';
+                    }
                 }
             }, 500);
-            
-            // 채팅창 초기화
-            // 플레이어 컬럼 스타일 확인
-            if (playersColumn) {
-                console.log('플레이어 컬럼 스타일:', 
-                    'display:', window.getComputedStyle(playersColumn).display,
-                    'height:', window.getComputedStyle(playersColumn).height,
-                    'visibility:', window.getComputedStyle(playersColumn).visibility
-                );
-            }
-            
-            // 채팅창 초기화
-            chatMessages.innerHTML = '';
-            freeChatMessages.innerHTML = '';
-            showSystemMessage('게임이 시작되었습니다.');
-            
-            // 투표 섹션 초기화
-            voteSection.style.display = 'none';
-            voteResultDisplay.innerHTML = '';
-            gameResultDisplay.innerHTML = '';
         });
         
         // 턴 시작 이벤트
@@ -884,81 +826,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // 플레이어 목록 업데이트
-    function updatePlayersList() {
-        if (!game) return;
+    function updatePlayersList(players, isGameScreen = false) {
+        // 게임 화면과 로비 화면에서 다른 ID 사용하도록 수정
+        const playerListId = isGameScreen ? 'game-players-list' : 'lobby-players-list';
+        const playersList = document.getElementById(playerListId);
         
-        playersList.innerHTML = '';
-        
-        game.players.forEach((player, index) => {
-            const playerItem = document.createElement('div');
-            playerItem.classList.add('player-item');
-            playerItem.dataset.playerId = player.id;
-            
-            // 내 자신 표시
-            if (player.id === myId) {
-                playerItem.classList.add('my-player');
-            }
-            
-            // 호스트 표시
-            if (player.isHost) {
-                playerItem.classList.add('host');
-            }
-            
-            const nickname = document.createElement('span');
-            nickname.classList.add('player-nickname');
-            nickname.textContent = player.nickname;
-            
-            const score = document.createElement('span');
-            score.classList.add('player-score');
-            score.textContent = `${player.score}점`;
-            
-            const status = document.createElement('span');
-            status.classList.add('player-status');
-            if (player.isHost) {
-                status.textContent = '[방장]';
-            }
-            
-            playerItem.appendChild(nickname);
-            playerItem.appendChild(score);
-            playerItem.appendChild(status);
-            
-            playersList.appendChild(playerItem);
-        });
-        
-        // 플레이어 수 업데이트
-        playerCount.textContent = game.players.length;
-        
-        // 게임 설정 섹션 업데이트
-        startGameBtn.disabled = !game.isHost;
-        gameModeSelect.disabled = !game.isHost;
-    }
-    
-    // 관전자 목록 업데이트
-    function updateSpectatorList() {
-        if (!game) return;
-        
-        spectatorList.innerHTML = '';
-        
-        if (game.spectators.length === 0) {
-            spectatorList.style.display = 'none';
+        if (!playersList) {
+            console.error(`플레이어 리스트를 찾을 수 없습니다: ${playerListId}`);
             return;
         }
         
-        spectatorList.style.display = 'block';
+        playersList.innerHTML = '';
         
-        const title = document.createElement('h3');
-        title.textContent = '관전자';
-        spectatorList.appendChild(title);
+        if (players.length === 0) {
+            const emptyItem = document.createElement('div');
+            emptyItem.className = 'player-item';
+            emptyItem.textContent = '아직 참가자가 없습니다';
+            playersList.appendChild(emptyItem);
+            return;
+        }
         
-        const list = document.createElement('ul');
-        
-        game.spectators.forEach(spectator => {
-            const item = document.createElement('li');
-            item.textContent = spectator.nickname;
-            list.appendChild(item);
+        players.forEach((player, index) => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'player-item';
+            
+            if (isGameScreen && currentGameData && currentGameData.turnOrder) {
+                // 게임 화면에서는 턴 순서 표시
+                if (currentGameData.currentTurn === player.id) {
+                    playerItem.classList.add('player-turn-active');
+                }
+                
+                // 턴 순서 계산
+                const turnIndex = currentGameData.turnOrder.indexOf(player.id);
+                const turnOrder = document.createElement('span');
+                turnOrder.className = 'turn-order';
+                turnOrder.textContent = turnIndex + 1;
+                playerItem.appendChild(turnOrder);
+            }
+            
+            const playerName = document.createElement('span');
+            playerName.className = 'player-name';
+            playerName.textContent = player.nickname;
+            
+            if (player.id === myId) {
+                playerName.textContent += ' (나)';
+            }
+            
+            playerItem.appendChild(playerName);
+            
+            if (player.isHost) {
+                const hostBadge = document.createElement('span');
+                hostBadge.className = 'host-badge';
+                hostBadge.textContent = '방장';
+                playerItem.appendChild(hostBadge);
+            }
+            
+            playersList.appendChild(playerItem);
         });
+    }
+    
+    // 관전자 목록 업데이트
+    function updateSpectatorList(spectators) {
+        const spectatorsList = document.getElementById('spectators-list');
         
-        spectatorList.appendChild(list);
+        if (!spectatorsList) {
+            console.error('관전자 리스트를 찾을 수 없습니다');
+            return;
+        }
+        
+        spectatorsList.innerHTML = '';
+        
+        if (spectators.length === 0) {
+            const emptyItem = document.createElement('li');
+            emptyItem.textContent = '관전자가 없습니다';
+            spectatorsList.appendChild(emptyItem);
+            return;
+        }
+        
+        spectators.forEach(spectator => {
+            const spectatorItem = document.createElement('li');
+            spectatorItem.textContent = spectator.nickname;
+            
+            if (spectator.id === myId) {
+                spectatorItem.textContent += ' (나)';
+            }
+            
+            spectatorsList.appendChild(spectatorItem);
+        });
     }
     
     // 턴 순서 업데이트
@@ -968,12 +922,31 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('턴 순서 업데이트:', turnOrder);
         
         // 게임 화면의 플레이어 리스트 요소 가져오기
-        // ID 중복을 해결하기 위해 querySelector 사용
         const gamePlayersList = document.querySelector('#game-screen .players-list');
         if (!gamePlayersList) {
             console.error('게임 화면의 플레이어 리스트 요소를 찾을 수 없습니다.');
+            
+            // 플레이어 리스트 컨테이너가 없는 경우 새로 생성
+            const playersColumn = document.querySelector('.players-column');
+            if (playersColumn) {
+                const newPlayersList = document.createElement('div');
+                newPlayersList.className = 'players-list';
+                newPlayersList.id = 'game-players-list';
+                playersColumn.appendChild(newPlayersList);
+                
+                console.log('플레이어 리스트 요소 생성 완료');
+                
+                // 재귀 호출로 다시 시도
+                setTimeout(() => updateTurnOrder(turnOrder), 100);
+                return;
+            }
             return;
         }
+        
+        // 리스트의 표시 상태 확인 및 보정
+        gamePlayersList.style.display = 'block';
+        gamePlayersList.style.visibility = 'visible';
+        gamePlayersList.style.minHeight = '200px';
         
         // 플레이어 리스트 초기화
         gamePlayersList.innerHTML = '';
@@ -987,6 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gamePlayersList.appendChild(emptyMessage);
             return;
         }
+        
+        // 메모리에 플레이어 정보 저장
+        window.currentPlayers = [...turnOrder];
         
         // 플레이어 항목 생성 및 추가
         turnOrder.forEach((player, index) => {
@@ -1009,7 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nickname.textContent = player.nickname || '알 수 없음';
             
             // 현재 플레이어면 하이라이트
-            if (index === 0) {
+            if (game.currentTurn !== undefined && index === game.currentTurn) {
                 playerItem.classList.add('current-turn');
             }
             
@@ -1018,6 +994,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             gamePlayersList.appendChild(playerItem);
         });
+        
+        // 리스트가 제대로 표시되는지 다시 확인
+        setTimeout(() => {
+            if (gamePlayersList.offsetHeight < 10) {
+                console.warn('플레이어 리스트가 제대로 표시되지 않습니다. 강제 스타일 적용');
+                gamePlayersList.style.cssText = 'display: block !important; visibility: visible !important; min-height: 200px; padding: 10px; border: 1px solid #ddd;';
+            }
+        }, 100);
         
         console.log('플레이어 리스트 업데이트 완료, 항목 수:', gamePlayersList.children.length);
     }
@@ -1155,13 +1139,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameEndCountdown = document.getElementById('game-end-countdown');
             const countdownTimer = document.getElementById('countdown-timer');
             const countdownNumber = document.querySelector('.countdown-number');
+            const countdownProgress = document.getElementById('countdown-progress');
             
+            // 카운트다운 요소 초기화
             gameEndCountdown.classList.add('active');
+            countdownNumber.style.display = 'block';
             
             let timeLeft = 10;
             countdownNumber.textContent = timeLeft;
             countdownNumber.setAttribute('data-count', timeLeft);
             countdownTimer.textContent = '초 후 다음 게임이 시작됩니다';
+            
+            // 프로그레스 바 초기화
+            if (countdownProgress) {
+                countdownProgress.style.width = '100%';
+                countdownProgress.style.transition = `width ${timeLeft}s linear`;
+                
+                // 강제 리플로우를 통해 transition이 제대로 적용되도록 함
+                void countdownProgress.offsetWidth;
+                
+                // 애니메이션 시작
+                setTimeout(() => {
+                    countdownProgress.style.width = '0%';
+                }, 50);
+            }
             
             // 메시지를 표시하여 다음 게임이 시작됨을 알립니다
             showSystemMessage(`${timeLeft}초 후 다음 게임이 자동으로 시작됩니다. 잠시만 기다려주세요!`);
@@ -1196,7 +1197,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameEndCountdown.classList.remove('active');
                     
                     // 게임 재시작
-                    game.restartGame();
+                    setTimeout(() => {
+                        game.restartGame();
+                    }, 300); // 약간의 지연을 주어 애니메이션이 완료되도록 함
                 }
             }, 1000);
         } else {

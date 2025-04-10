@@ -4,264 +4,217 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>라이어 게임</title>
-    <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
-        <!-- 도움말 버튼 -->
-        <div class="help-btn-container">
-            <button id="help-btn" class="help-btn">?</button>
-        </div>
-
-        <!-- 도움말 모달 -->
-        <div id="help-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <h2>라이어 게임 설명서</h2>
-                
-                <div class="help-section">
-                    <h3>게임 소개</h3>
-                    <p>라이어 게임은 참가자 중 한 명이 라이어(거짓말쟁이)가 되어 다른 사람들을 속이는 게임입니다. 스파이 모드에서는 라이어 외에 스파이라는 역할이 추가됩니다.</p>
-                </div>
-                
-                <div class="help-section">
-                    <h3>게임 규칙</h3>
-                    <h4>기본 모드</h4>
-                    <ol>
-                        <li>참가자 중 한 명이 랜덤으로 라이어로 선정됩니다.</li>
-                        <li>라이어를 제외한 모든 사람에게 특정 카테고리와 단어가 제공됩니다.</li>
-                        <li>라이어에게는 카테고리만 제공되고 단어는 알려주지 않습니다.</li>
-                        <li>참가자들은 순서대로 돌아가며 해당 단어에 대한 설명을 합니다.</li>
-                        <li>라이어는 다른 사람들의 설명을 듣고 어떤 단어인지 추측하여 자연스럽게 행동해야 합니다.</li>
-                        <li>모든 사람이 한 번씩 설명한 후, 누가 라이어인지 투표합니다.</li>
-                        <li>과반수가 라이어를 찾아내면, 라이어는 단어를 맞춰야 합니다.</li>
-                        <li>라이어가 단어를 맞추면 라이어 승리, 틀리면 시민들 승리입니다.</li>
-                        <li>과반수가 라이어를 찾지 못하면 자동으로 라이어 승리입니다.</li>
-                    </ol>
-                    
-                    <h4>스파이 모드</h4>
-                    <ol>
-                        <li>기본 모드와 동일하지만, 추가로 한 명이 스파이로 선정됩니다.</li>
-                        <li>스파이는 단어를 알고 있지만, 정체를 숨겨야 합니다.</li>
-                        <li>스파이의 목표는 라이어가 걸리지 않도록 돕는 것입니다.</li>
-                        <li>라이어가 승리하면 스파이도 함께 승리합니다.</li>
-                    </ol>
-                </div>
-                
-                <div class="help-section">
-                    <h3>점수 시스템</h3>
-                    <ul>
-                        <li>라이어 승리: 라이어 +3점, 스파이 +1점</li>
-                        <li>시민 승리: 라이어/스파이를 제외한 모든 플레이어 +1점</li>
-                    </ul>
-                </div>
-                
-                <div class="help-section">
-                    <h3>게임 진행 순서</h3>
-                    <ol>
-                        <li>닉네임을 입력하고 게임에 참여합니다.</li>
-                        <li>방장이 게임 모드를 선택하고 게임을 시작합니다.</li>
-                        <li>각자 카테고리와 단어(또는 라이어/스파이 여부)를 확인합니다.</li>
-                        <li>순서대로 돌아가며 단어에 대해 설명합니다. (40자 제한)</li>
-                        <li>모두 발언 후 라이어로 의심되는 사람에게 투표합니다. (20초 제한)</li>
-                        <li>투표 결과에 따라 라이어가 단어를 맞추거나, 게임이 종료됩니다.</li>
-                        <li>승자에게 점수가 부여되고, 다시 게임을 시작할 수 있습니다.</li>
-                    </ol>
-                </div>
-                
-                <div class="help-section">
-                    <h3>팁</h3>
-                    <ul>
-                        <li>라이어는 다른 사람들의 설명을 주의 깊게 들으며 단어를 유추해보세요.</li>
-                        <li>시민들은 너무 직접적인 설명을 하면 라이어에게 단서를 주게 됩니다.</li>
-                        <li>스파이는 자신이 스파이임을 들키지 않도록 주의하세요.</li>
-                        <li>투표 전에 의심스러운 사람의 설명을 다시 생각해보세요.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
         <!-- 로그인 화면 -->
-        <div id="login-screen" class="screen">
-            <div class="container">
+        <div id="login-screen">
+            <div class="login-container">
                 <h1>라이어 게임</h1>
-                <p>온라인으로 즐기는 라이어 게임!</p>
+                <p class="subtitle">친구들과 함께하는 실시간 추리 게임</p>
                 
-                <div class="form-group">
-                    <label for="nickname-input">닉네임 (1-6자)</label>
-                    <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" maxlength="6">
-                </div>
-                
-                <div class="form-actions">
-                    <button id="create-room-btn" class="btn primary-btn">새 방 만들기</button>
-                </div>
-                
-                <div class="separator">또는</div>
-                
-                <div class="form-group">
-                    <label for="room-id-input">방 ID</label>
-                    <input type="text" id="room-id-input" placeholder="참여할 방 ID를 입력하세요">
-                </div>
-                
-                <div class="form-actions">
-                    <button id="join-room-btn" class="btn primary-btn">방 참여하기</button>
+                <div class="login-card">
+                    <div class="login-simple">
+                        <h3>게임 참가하기</h3>
+                        <p>닉네임을 입력하고 게임에 참가하세요. 친구들도 같은 방식으로 접속하면 자동으로 같은 방에 모입니다.</p>
+                        <div class="form-group">
+                            <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요 (1-6자)" required>
+                        </div>
+                        <button id="create-room-btn">게임 참가하기</button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 로비 화면 -->
-        <div id="lobby-screen" class="screen">
-            <div class="container">
-                <h2>게임 로비</h2>
-                
-                <div id="room-id-container" class="info-box" style="display: none;">
-                    <p>방 ID: <span id="room-id-display"></span></p>
-                    <p class="hint">친구들에게 이 ID를 공유하여 같은 방에 참여하도록 하세요!</p>
-                </div>
-                
-                <div class="game-settings">
-                    <h3>게임 설정</h3>
-                    <div class="form-group">
-                        <label for="game-mode-select">게임 모드</label>
-                        <select id="game-mode-select">
-                            <option value="basic">기본 모드 (라이어 1명)</option>
-                            <option value="spy">스파이 모드 (라이어 1명 + 스파이 1명)</option>
-                        </select>
+        <div id="lobby-screen" style="display: none;">
+            <div class="lobby-container">
+                <div class="lobby-header">
+                    <h2>게임 로비</h2>
+                    <div class="room-info">
+                        <div class="connection-status">
+                            <span class="status-icon">✓</span>
+                            <span class="status-text">친구들과 자동으로 연결됩니다</span>
+                        </div>
+                        <p class="hint">친구들도 동일한 방식으로 접속하면 같은 방에 모입니다.</p>
                     </div>
-                    <button id="start-game-btn" class="btn primary-btn">게임 시작</button>
                 </div>
                 
-                <div class="players-container">
-                    <h3>참가자 목록</h3>
-                    <div id="players-list" class="list-container"></div>
-                    <div class="player-count">
-                        <span id="player-count">0</span>/8
+                <div class="lobby-content">
+                    <div class="players-section">
+                        <h3>참가자 목록 (<span id="player-count">0</span>명)</h3>
+                        <div id="lobby-players-list" class="players-list"></div>
+                    </div>
+                    
+                    <div class="game-settings-section">
+                        <h3>게임 설정</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label for="game-mode-select">게임 모드:</label>
+                                <select id="game-mode-select">
+                                    <option value="basic">기본 모드 (라이어 1명)</option>
+                                    <option value="spy">스파이 모드 (라이어 + 스파이)</option>
+                                </select>
+                            </div>
+                            
+                            <button id="start-game-btn" disabled>게임 시작</button>
+                            <button id="share-btn" class="share-btn">친구에게 방 링크 공유하기</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- 게임 화면 -->
-        <div id="game-screen" style="display:none;">
-            <!-- 게임 시작 팝업 추가 -->
-            <div id="game-start-popup" class="game-popup">
-                <div class="popup-content">
-                    <h2>게임 시작!</h2>
-                    <div id="popup-category-word"></div>
-                    <div id="popup-role-info"></div>
-                </div>
-            </div>
-            
-            <!-- 게임 종료 카운트다운 팝업 추가 -->
-            <div id="game-end-countdown" class="game-popup">
-                <div class="popup-content">
-                    <h2>게임 종료!</h2>
-                    <div id="end-result-info"></div>
-                    <div class="countdown-container">
-                        <div class="countdown-number">5</div>
-                        <div class="countdown-progress-container">
-                            <div class="countdown-progress-bar"></div>
-                        </div>
-                        <div id="countdown-timer">초 후 다음 게임이 시작됩니다</div>
-                    </div>
-                </div>
-            </div>
-            
+        <div id="game-screen" style="display: none;">
             <div class="game-header">
-                <div class="category-word">
-                    <div id="category"></div>
-                    <div id="word"></div>
+                <div class="game-info">
+                    <div id="category-info">카테고리: <span id="category"></span></div>
+                    <div id="word-info">제시어: <span id="word"></span></div>
+                    <div id="role-info">역할: <span id="role"></span></div>
                 </div>
-                <div id="turn-display" class="turn-display"></div>
+                <div id="turn-display" class="turn-display">다음 차례를 기다리는 중...</div>
             </div>
+
             <div class="game-content">
                 <div class="players-column">
-                    <!-- 플레이어 목록 (턴 순서) -->
-                    <h3>플레이어 순서</h3>
-                    <div id="players-list" class="players-list"></div>
+                    <h3>플레이어 목록</h3>
+                    <div id="game-players-list" class="players-list"></div>
+                    <div class="spectators-section">
+                        <h4>관전자 목록</h4>
+                        <ul id="spectators-list"></ul>
+                    </div>
                 </div>
+
                 <div class="main-column">
-                    <!-- 메인 채팅 -->
-                    <div id="chat-messages" class="chat-messages"></div>
-                    <!-- 발언 입력 -->
-                    <div class="chat-input-area">
-                        <input type="text" id="turn-chat-input" placeholder="당신의 차례에만 입력할 수 있습니다." maxlength="40" disabled>
-                        <button id="turn-chat-send-btn" disabled>보내기</button>
-                    </div>
-                </div>
-                <div class="right-column">
-                    <!-- 투표 섹션 -->
-                    <div id="vote-section" style="display:none;">
-                        <h3>라이어 투표</h3>
-                        <div id="vote-timer" class="timer">투표 시간: 20초</div>
-                        <div id="vote-list"></div>
-                    </div>
-                    <!-- 투표 결과 -->
-                    <div id="vote-result"></div>
-                    <!-- 게임 결과 -->
-                    <div id="game-result"></div>
-                    <!-- 자유 채팅 -->
-                    <div id="free-chat">
-                        <h3>자유 채팅</h3>
-                        <div id="free-chat-messages"></div>
+                    <div id="turn-chat">
+                        <h3>턴 채팅</h3>
+                        <div id="turn-messages" class="chat-messages"></div>
                         <div class="chat-input-area">
-                            <input type="text" id="chat-input" placeholder="채팅 메시지를 입력하세요" maxlength="100">
-                            <button id="chat-send-btn">보내기</button>
+                            <input type="text" id="turn-chat-input" placeholder="한 번에 한 문장만 입력하세요..." disabled>
+                            <button id="turn-chat-send-btn" disabled>전송</button>
                         </div>
                     </div>
-                    <!-- 재시작 버튼 -->
-                    <button id="restart-game-btn" style="display:none;">다시 하기</button>
+                </div>
+
+                <div class="right-column">
+                    <div id="vote-section">
+                        <h3>라이어 투표</h3>
+                        <div class="timer" id="vote-timer" style="display: none;"></div>
+                        <div id="vote-players-list"></div>
+                        <button id="start-vote-btn">라이어 투표 시작</button>
+                    </div>
+
+                    <div id="vote-result" style="display: none;">
+                        <h3>투표 결과</h3>
+                        <div id="vote-result-content"></div>
+                    </div>
+
+                    <div id="game-result" style="display: none;">
+                        <h3>게임 결과</h3>
+                        <div id="game-result-content"></div>
+                    </div>
+
+                    <div id="free-chat">
+                        <h3>자유 채팅</h3>
+                        <div id="free-chat-messages" class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" placeholder="채팅 메시지를 입력하세요...">
+                            <button id="chat-send-btn">전송</button>
+                        </div>
+                    </div>
+
+                    <button id="restart-game-btn" style="display: none;">다음 게임 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 팝업 -->
+        <div id="game-start-popup" class="game-popup">
+            <div class="popup-content">
+                <h2>게임 시작!</h2>
+                <div id="popup-category-word"></div>
+                <div id="popup-role-info"></div>
+            </div>
+        </div>
+
+        <div id="game-end-countdown" class="game-popup">
+            <div class="popup-content">
+                <h2>게임 종료</h2>
+                <div id="end-result-info"></div>
+                <div class="countdown-container">
+                    <div id="countdown-number" class="countdown-number">10</div>
+                    <div class="countdown-progress-container">
+                        <div id="countdown-progress" class="countdown-progress-bar"></div>
+                    </div>
+                </div>
+                <div id="countdown-timer"></div>
+            </div>
+        </div>
+
+        <!-- 도움말 버튼 및 모달 -->
+        <div class="help-btn-container">
+            <button class="help-btn" id="help-btn">?</button>
+        </div>
+
+        <div id="help-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" id="close-help">&times;</span>
+                <h2>라이어 게임 도움말</h2>
+                
+                <div class="help-section">
+                    <h3>게임 방법</h3>
+                    <p>라이어 게임은 참가자 중 한 명이 라이어가 되어 정해진 제시어를 모른 채 게임에 참여하는 추리 게임입니다.</p>
+                    
+                    <h4>기본 규칙:</h4>
+                    <ol>
+                        <li>게임이 시작되면 모든 사람에게 카테고리와 제시어가 공개됩니다. (라이어만 제외)</li>
+                        <li>순서대로 돌아가며 한 번에 한 문장씩 제시어에 대해 설명합니다.</li>
+                        <li>라이어는 다른 사람들의 설명을 듣고 제시어를 유추해야 합니다.</li>
+                        <li>일반 참가자들은 라이어가 누구인지 알아내야 합니다.</li>
+                        <li>모두 한 번씩 설명을 마치면 라이어를 투표합니다.</li>
+                    </ol>
+                    
+                    <h4>승리 조건:</h4>
+                    <ul>
+                        <li>일반 참가자: 라이어를 찾아내고, 라이어가 제시어를 맞추지 못하면 승리</li>
+                        <li>라이어: 라이어로 지목되지 않거나, 지목되더라도 제시어를 맞추면 승리</li>
+                    </ul>
+                </div>
+                
+                <div class="help-section">
+                    <h3>스파이 모드</h3>
+                    <p>스파이 모드에서는 기본 라이어 외에 제시어를 아는 스파이가 한 명 추가됩니다.</p>
+                    <ul>
+                        <li>스파이는 제시어를 알지만, 다른 사람들에게 자신이 스파이임을 들키지 않아야 합니다.</li>
+                        <li>라이어는 여전히 제시어를 모릅니다.</li>
+                        <li>승리 조건은 기본 모드와 동일하지만, 스파이의 역할이 게임을 더 복잡하게 만듭니다.</li>
+                    </ul>
+                </div>
+                
+                <div class="help-section">
+                    <h3>조작 방법</h3>
+                    <h4>채팅:</h4>
+                    <ul>
+                        <li>턴 채팅: 자신의 차례가 되면 한 문장씩 입력하여 설명합니다.</li>
+                        <li>자유 채팅: 게임 중 언제든지 사용할 수 있는 채팅입니다.</li>
+                    </ul>
+                    
+                    <h4>투표:</h4>
+                    <ul>
+                        <li>라이어 투표 시작 버튼을 누르면 투표가 시작됩니다.</li>
+                        <li>각 플레이어의 이름 옆에 있는 투표 버튼을 클릭하여 라이어로 의심되는 사람에게 투표합니다.</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- PeerJS CDN -->
-    <script>
-        // PeerJS 로드 여부 확인 변수
-        window.peerJSLoaded = false;
-    </script>
-    <!-- 최신 버전의 PeerJS 로드 -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js" 
-            onerror="console.error('PeerJS 로드 실패 (기본 CDN)');"
-            onload="window.peerJSLoaded = true; console.log('PeerJS 로드 성공');">
-    </script>
-    <!-- PeerJS 폴백 (첫 번째 CDN이 실패한 경우) -->
-    <script>
-        // 첫 번째 CDN 로드에 실패한 경우 대체 CDN 시도
-        setTimeout(function() {
-            if (!window.peerJSLoaded) {
-                console.log('대체 PeerJS CDN 시도 중...');
-                var script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
-                script.onload = function() { 
-                    window.peerJSLoaded = true; 
-                    console.log('대체 PeerJS 로드 성공'); 
-                };
-                script.onerror = function() { 
-                    console.error('두 번째 CDN 로드 실패, 세 번째 시도...');
-                    var script2 = document.createElement('script');
-                    script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.1/peerjs.min.js';
-                    script2.onload = function() {
-                        window.peerJSLoaded = true;
-                        console.log('세 번째 PeerJS 로드 성공');
-                    };
-                    script2.onerror = function() {
-                        console.error('모든 PeerJS CDN 로드 실패!'); 
-                        alert('PeerJS 라이브러리 로드에 실패했습니다. 페이지를 새로고침하거나 다른 브라우저에서 다시 시도해주세요.');
-                    };
-                    document.head.appendChild(script2);
-                };
-                document.head.appendChild(script);
-            }
-        }, 3000); // 3초 후 체크
-    </script>
-    <!-- 게임 데이터 -->
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
     <script src="js/data.js"></script>
-    <!-- 게임 로직 -->
     <script src="js/game.js"></script>
-    <!-- 메인 스크립트 -->
     <script src="js/main.js"></script>
 </body>
 </html>
