@@ -138,21 +138,38 @@ document.addEventListener('DOMContentLoaded', () => {
             loginScreen.style.display = 'none';
             lobbyScreen.style.display = 'block';
             
-            // 방 생성
-            const roomId = game.createRoom();
-            isFirstPlayer = true;
-            
             // 이벤트 리스너 설정
             setupGameListeners();
             
-            // 플레이어 목록 업데이트
-            updatePlayersList();
+            // 기존 방에 입장 시도 
+            try {
+                console.log('기존 방 입장 시도:', DEFAULT_ROOM_ID);
+                await game.joinRoom(DEFAULT_ROOM_ID);
+                console.log('기존 방 입장 성공');
+                isFirstPlayer = false;
+                
+                // 플레이어 목록 업데이트
+                updatePlayersList();
+                
+                // 일반 플레이어는 게임 시작/설정 버튼 비활성화
+                startGameBtn.disabled = true;
+                gameModeSelect.disabled = true;
+            } catch (joinError) {
+                console.log('기존 방 입장 실패, 새 방 생성:', joinError.message);
+                
+                // 기존 방 입장 실패 시 새 방 생성 (첫 번째 플레이어)
+                const roomId = game.createRoom();
+                isFirstPlayer = true;
+                
+                // 플레이어 목록 업데이트
+                updatePlayersList();
+                
+                // 첫 번째 플레이어는 자동으로 방장
+                startGameBtn.disabled = false;
+                gameModeSelect.disabled = false;
+            }
             
-            // 첫 번째 플레이어는 자동으로 방장
-            startGameBtn.disabled = !isFirstPlayer;
-            gameModeSelect.disabled = !isFirstPlayer;
-            
-            console.log('게임 초기화 및 방 생성 완료');
+            console.log('게임 초기화 및 방 설정 완료');
         } catch (error) {
             joinGameBtn.disabled = false;
             joinGameBtn.textContent = '게임 참여하기';
@@ -292,6 +309,43 @@ document.addEventListener('DOMContentLoaded', () => {
         // 방 생성 이벤트
         game.on('roomCreated', data => {
             console.log('방 생성됨:', data);
+            
+            // 접속 정보 표시
+            const connectionInfo = document.createElement('div');
+            connectionInfo.classList.add('connection-info');
+            connectionInfo.innerHTML = `
+                <p>방 ID: <span id="room-id">${data.roomId}</span>
+                <button id="copy-room-id" class="copy-btn">복사</button></p>
+                <p>다른 플레이어들이 이 방에 자동으로 연결됩니다.</p>
+            `;
+            
+            // 로비 컨트롤 영역에 추가
+            const lobbyControls = document.getElementById('lobby-controls');
+            if (lobbyControls) {
+                lobbyControls.innerHTML = '';
+                lobbyControls.appendChild(connectionInfo);
+                
+                // 복사 버튼 이벤트 추가
+                const copyBtn = document.getElementById('copy-room-id');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', () => {
+                        const roomIdSpan = document.getElementById('room-id');
+                        if (roomIdSpan) {
+                            navigator.clipboard.writeText(roomIdSpan.textContent)
+                                .then(() => {
+                                    copyBtn.textContent = '복사됨!';
+                                    setTimeout(() => {
+                                        copyBtn.textContent = '복사';
+                                    }, 2000);
+                                })
+                                .catch(err => {
+                                    console.error('클립보드 복사 실패:', err);
+                                    alert('클립보드 복사에 실패했습니다.');
+                                });
+                        }
+                    });
+                }
+            }
         });
         
         // 방 입장 이벤트
