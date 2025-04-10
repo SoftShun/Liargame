@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             console.log('게임 초기화 시작');
+            // 게임 초기화
             myId = await game.init(nickname);
             
             // 로그인 화면 숨기고 로비 화면 표시
@@ -141,33 +142,45 @@ document.addEventListener('DOMContentLoaded', () => {
             // 이벤트 리스너 설정
             setupGameListeners();
             
-            // 기존 방에 입장 시도 
-            try {
-                console.log('기존 방 입장 시도:', DEFAULT_ROOM_ID);
-                await game.joinRoom(DEFAULT_ROOM_ID);
-                console.log('기존 방 입장 성공');
-                isFirstPlayer = false;
-                
-                // 플레이어 목록 업데이트
-                updatePlayersList();
-                
-                // 일반 플레이어는 게임 시작/설정 버튼 비활성화
-                startGameBtn.disabled = true;
-                gameModeSelect.disabled = true;
-            } catch (joinError) {
-                console.log('기존 방 입장 실패, 새 방 생성:', joinError.message);
-                
-                // 기존 방 입장 실패 시 새 방 생성 (첫 번째 플레이어)
-                const roomId = game.createRoom();
+            // 방장인 경우
+            if (game.isHost) {
+                console.log('방장으로 접속 성공');
+                // 방 생성
+                game.createRoom();
                 isFirstPlayer = true;
-                
-                // 플레이어 목록 업데이트
-                updatePlayersList();
                 
                 // 첫 번째 플레이어는 자동으로 방장
                 startGameBtn.disabled = false;
                 gameModeSelect.disabled = false;
+            } else {
+                // 일반 플레이어인 경우
+                console.log('일반 플레이어로 접속 시도');
+                isFirstPlayer = false;
+                
+                // 기존 방 입장 시도
+                try {
+                    // 고정된 방 ID로 입장 시도
+                    await game.joinRoom(DEFAULT_ROOM_ID);
+                    console.log('기존 방 입장 성공');
+                    
+                    // 일반 플레이어는 게임 시작/설정 버튼 비활성화
+                    startGameBtn.disabled = true;
+                    gameModeSelect.disabled = true;
+                } catch (joinError) {
+                    console.error('방 입장 실패:', joinError.message);
+                    
+                    // 오류 메시지 표시
+                    alert('방 입장에 실패했습니다. 다시 시도해주세요.');
+                    joinGameBtn.disabled = false;
+                    joinGameBtn.textContent = '게임 참여하기';
+                    loginScreen.style.display = 'block';
+                    lobbyScreen.style.display = 'none';
+                    return;
+                }
             }
+            
+            // 플레이어 목록 업데이트
+            updatePlayersList();
             
             console.log('게임 초기화 및 방 설정 완료');
         } catch (error) {
@@ -222,49 +235,77 @@ document.addEventListener('DOMContentLoaded', () => {
         game.startGame();
     });
     
-    // 턴 채팅 전송 버튼 클릭 - 주석 처리하고 함수로 대체 
-    // turnChatSendBtn.addEventListener('click', () => {
-    //     if (!game) return;
-    //     
-    //     const message = turnChatInput.value.trim();
-    //     if (!message) return;
-    //     
-    //     if (game.gamePhase === 'playing' && 
-    //         game.turnOrder[game.currentTurn].id === myId) {
-    //         game.sendMessage(message, true);
-    //         turnChatInput.value = '';
-    //     } else if (game.gamePhase === 'wordGuess' && game.liar === myId) {
-    //         game.sendMessage(message, false);
-    //         turnChatInput.value = '';
-    //     }
-    // });
+    // 일반 채팅 전송 버튼 클릭
+    chatSendBtn.addEventListener('click', () => {
+        if (!game) return;
+        
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        sendFreeChat(message);
+        chatInput.value = '';
+    });
     
-    // 턴 채팅 입력시 엔터키 처리 - 주석 처리
-    // turnChatInput.addEventListener('keypress', event => {
-    //     if (event.key === 'Enter') {
-    //         event.preventDefault();
-    //         turnChatSendBtn.click();
-    //     }
-    // });
+    // 채팅 입력시 엔터키 처리
+    chatInput.addEventListener('keypress', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            chatSendBtn.click();
+        }
+    });
     
-    // 일반 채팅 전송 버튼 클릭 - 주석 처리하고 함수로 대체
-    // chatSendBtn.addEventListener('click', () => {
-    //     if (!game) return;
-    //     
-    //     const message = chatInput.value.trim();
-    //     if (!message) return;
-    //     
-    //     sendFreeChat(message);
-    //     chatInput.value = '';
-    // });
+    // 턴 채팅 전송 버튼 클릭
+    turnChatSendBtn.addEventListener('click', () => {
+        if (!game) return;
+        
+        const message = turnChatInput.value.trim();
+        if (!message) return;
+        
+        if (message.length > 40) {
+            alert('설명은 40자 이내로 입력해주세요.');
+            return;
+        }
+        
+        if (game.gamePhase === 'playing' && 
+            game.turnOrder[game.currentTurn].id === myId) {
+            game.sendMessage(message, true);
+            turnChatInput.value = '';
+            turnChatInput.disabled = true;
+            turnChatSendBtn.disabled = true;
+        } else if (game.gamePhase === 'wordGuess' && game.liar === myId) {
+            game.sendMessage(message, false);
+            turnChatInput.value = '';
+            turnChatInput.disabled = true;
+            turnChatSendBtn.disabled = true;
+        }
+    });
     
-    // 채팅 입력시 엔터키 처리 - 주석 처리
-    // chatInput.addEventListener('keypress', event => {
-    //     if (event.key === 'Enter') {
-    //         event.preventDefault();
-    //         chatSendBtn.click();
-    //     }
-    // });
+    // 턴 채팅 입력시 엔터키 처리
+    turnChatInput.addEventListener('keypress', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            turnChatSendBtn.click();
+        }
+    });
+    
+    // 자유 채팅 버튼 클릭
+    document.getElementById('free-chat-send-btn').addEventListener('click', () => {
+        const freeChatInput = document.getElementById('free-chat-input');
+        const message = freeChatInput.value.trim();
+        
+        if (!message) return;
+        
+        sendFreeChat(message);
+        freeChatInput.value = '';
+    });
+    
+    // 자유 채팅 입력시 엔터키 처리
+    document.getElementById('free-chat-input').addEventListener('keypress', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            document.getElementById('free-chat-send-btn').click();
+        }
+    });
     
     // 게임 재시작 버튼 클릭
     restartGameBtn.addEventListener('click', () => {
@@ -454,10 +495,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameStartPopup = document.getElementById('game-start-popup');
             gameStartPopup.classList.add('active');
             
-            // 2초 후 팝업 숨기기
+            // 4초 후 팝업 숨기기
             setTimeout(() => {
                 gameStartPopup.classList.remove('active');
-            }, 2000);
+            }, 4000);
             
             // 턴 순서 표시
             console.log('턴 순서 데이터:', data.turnOrder);
@@ -1129,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             gameEndCountdown.classList.add('active');
             
-            let timeLeft = 5;
+            let timeLeft = 10;
             countdownNumber.textContent = timeLeft;
             countdownNumber.setAttribute('data-count', timeLeft);
             countdownTimer.textContent = '초 후 다음 게임이 시작됩니다';
@@ -1160,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 500);
                 
                 // 프로그레스 바 업데이트
-                const progressWidth = (timeLeft / 5) * 100;
+                const progressWidth = (timeLeft / 10) * 100;
                 progressBar.style.width = progressWidth + '%';
                 
                 if (timeLeft <= 0) {
@@ -1184,112 +1225,13 @@ document.addEventListener('DOMContentLoaded', () => {
             progressContainer.style.display = 'none';
             countdownTimer.textContent = '방장이 다음 게임을 시작하길 기다리는 중...';
             
-            // 5초 후 팝업 숨기기
+            // 10초 후 팝업 숨기기
             setTimeout(() => {
                 gameEndCountdown.classList.remove('active');
-            }, 5000);
+            }, 10000);
         }
     }
 
-    // 채팅 보내기 버튼 이벤트 리스너 - 이벤트 리스너 재설정
-    function setupChatButtonListeners() {
-        console.log('채팅 버튼 이벤트 리스너 설정');
-        
-        // 기존 이벤트 리스너 제거
-        chatSendBtn.removeEventListener('click', sendChatMessage);
-        turnChatSendBtn.removeEventListener('click', sendTurnChatMessage);
-        
-        // 새 이벤트 리스너 등록
-        chatSendBtn.addEventListener('click', sendChatMessage);
-        turnChatSendBtn.addEventListener('click', sendTurnChatMessage);
-        
-        // 입력 필드에서 Enter 키 누를 때 메시지 전송
-        chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendChatMessage();
-            }
-        });
-        
-        turnChatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendTurnChatMessage();
-            }
-        });
-        
-        console.log('채팅 버튼 이벤트 리스너 설정 완료');
-    }
-
-    // 메인 스크립트 끝 부분에 다음 코드 추가
-    // 페이지 로드 후 버튼 리스너 설정
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            setupChatButtonListeners();
-            console.log('버튼 이벤트 리스너 지연 설정 완료');
-        }, 1000);
-    });
-
-    // 턴 채팅 메시지 전송 함수
-    function sendTurnChatMessage() {
-        if (!game) return;
-        if (turnChatInput.value.trim() === '') return;
-        
-        console.log('턴 채팅 메시지 전송 시도:', turnChatInput.value);
-        
-        const message = turnChatInput.value.trim();
-        
-        // 40자 제한
-        if (message.length > 40) {
-            alert('설명은 40자 이내로 입력해주세요.');
-            return;
-        }
-        
-        if (game.gamePhase === 'playing' && 
-            game.turnOrder[game.currentTurn].id === myId) {
-            game.sendMessage(message, true);
-            turnChatInput.value = '';
-            turnChatInput.disabled = true;
-            turnChatSendBtn.disabled = true;
-        } else if (game.gamePhase === 'wordGuess' && game.liar === myId) {
-            game.sendMessage(message, false);
-            turnChatInput.value = '';
-            turnChatInput.disabled = true;
-            turnChatSendBtn.disabled = true;
-        }
-    }
-
-    // 채팅 메시지 전송 함수
-    function sendChatMessage() {
-        if (!game) return;
-        if (chatInput.value.trim() === '') return;
-        
-        console.log('일반 채팅 메시지 전송 시도:', chatInput.value);
-        
-        const message = chatInput.value.trim();
-        sendFreeChat(message);
-        chatInput.value = '';
-    }
-
-    // 채팅 관련 이벤트 리스너
-    // 기존 버튼 이벤트 리스너를 제거하고 새로운 함수로 대체
+    // 초기화 시 채팅 이벤트 리스너 설정
     setupChatButtonListeners();
-    
-    // 자유 채팅 입력 처리
-    document.getElementById('free-chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendFreeChatMessage();
-        }
-    });
-    
-    document.getElementById('free-chat-send-btn').addEventListener('click', sendFreeChatMessage);
-    
-    function sendFreeChatMessage() {
-        const freeChatInput = document.getElementById('free-chat-input');
-        const message = freeChatInput.value.trim();
-        
-        if (message === '') return;
-        
-        console.log('자유 채팅 메시지 전송:', message);
-        game.sendFreeChat(message);
-        freeChatInput.value = '';
-    }
 });
