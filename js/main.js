@@ -91,11 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_ROOM_ID = "liargame-fixed-room";
     
     // 게임 인스턴스
-    let game = null;
+    console.log('게임 인스턴스 생성 시작');
+    let game = new LiarGame();
     let myId = null;
     let votingTimer = null;
     let guessTimer = null;
-    let isFirstPlayer = false;
+    let isFirstPlayer = true;  // 첫 번째 플레이어 여부
 
     // 초기 화면 설정
     loginScreen.style.display = 'block';
@@ -120,97 +121,75 @@ document.addEventListener('DOMContentLoaded', () => {
     // 게임 참여 버튼 클릭
     joinGameBtn.addEventListener('click', async () => {
         const nickname = nicknameInput.value.trim();
-        if (!validateNickname(nickname)) return;
         
-        // PeerJS 로드 여부 확인
-        if (!checkPeerJSLoaded()) return;
+        if (nickname.length < 1 || nickname.length > 6) {
+            alert('닉네임은 1자 이상 6자 이하로 입력해주세요.');
+            return;
+        }
+        
+        joinGameBtn.disabled = true;
+        joinGameBtn.textContent = '접속 중...';
         
         try {
-            // 게임 인스턴스 생성 및 초기화
-            console.log('게임 인스턴스 생성 시작');
-            game = new LiarGame();
+            console.log('게임 초기화 시작');
+            myId = await game.init(nickname);
             
-            try {
-                console.log('게임 초기화 시작');
-                myId = await game.init(nickname);
-                console.log('게임 초기화 완료, ID:', myId);
-                
-                // 방 입장 시도
-                try {
-                    console.log('방 입장 시도:', DEFAULT_ROOM_ID);
-                    // 기존 방에 입장 시도
-                    await game.joinRoom(DEFAULT_ROOM_ID);
-                    console.log('기존 방 입장 성공');
-                    isFirstPlayer = false;
-                } catch (error) {
-                    // 방이 없으면 새로 생성
-                    const errorMessage = error.message || '알 수 없는 오류';
-                    console.log('방이 없습니다. 새 방을 만듭니다:', errorMessage);
-                    
-                    // WebRTC/STUN 서버 관련 오류인지 확인
-                    if (errorMessage.includes('RTCPeerConnection') || 
-                        errorMessage.includes('STUN') || 
-                        errorMessage.includes('ICE')) {
-                        console.warn('WebRTC 연결 관련 오류 발생. 네트워크 설정을 확인해주세요.');
-                    }
-                    
-                    // 새 방 생성
-                    game.createRoom();
-                    isFirstPlayer = true;
-                }
-                
-                // 화면 전환
-                loginScreen.style.display = 'none';
-                lobbyScreen.style.display = 'block';
-                
-                // 이벤트 리스너 설정
-                setupGameListeners();
-                
-                // 플레이어 목록 업데이트
-                updatePlayersList();
-                
-                // 첫 번째 플레이어는 자동으로 방장
-                startGameBtn.disabled = !isFirstPlayer;
-                gameModeSelect.disabled = !isFirstPlayer;
-            } catch (initError) {
-                console.error('게임 초기화 실패:', initError);
-                let errorMsg = '게임 초기화에 실패했습니다.';
-                
-                if (initError.message) {
-                    if (initError.message.includes('PeerJS')) {
-                        errorMsg = 'PeerJS 연결에 실패했습니다. 브라우저 설정이나 네트워크 연결을 확인해주세요.';
-                    } else if (initError.message.includes('timeout') || initError.message.includes('초과')) {
-                        errorMsg = '연결 시간이 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.';
-                    } else {
-                        errorMsg = `게임 초기화 실패: ${initError.message}`;
-                    }
-                }
-                
-                alert(errorMsg);
-                
-                // 개발자 콘솔에 상세 정보 기록
-                console.group('게임 초기화 오류 상세 정보');
-                console.error('오류 메시지:', initError.message);
-                console.error('오류 객체:', initError);
-                console.error('브라우저:', navigator.userAgent);
-                console.error('PeerJS 상태:', typeof Peer !== 'undefined' ? '로드됨' : '로드 안됨');
-                console.groupEnd();
-            }
+            // 로그인 화면 숨기고 로비 화면 표시
+            loginScreen.style.display = 'none';
+            lobbyScreen.style.display = 'block';
+            
+            // 방 생성
+            const roomId = game.createRoom();
+            isFirstPlayer = true;
+            
+            // 이벤트 리스너 설정
+            setupGameListeners();
+            
+            // 플레이어 목록 업데이트
+            updatePlayersList();
+            
+            // 첫 번째 플레이어는 자동으로 방장
+            startGameBtn.disabled = !isFirstPlayer;
+            gameModeSelect.disabled = !isFirstPlayer;
+            
+            console.log('게임 초기화 및 방 생성 완료');
         } catch (error) {
-            console.error('게임 참여 실패:', error);
-            let errorMsg = '게임 참여에 실패했습니다.';
+            joinGameBtn.disabled = false;
+            joinGameBtn.textContent = '게임 참여하기';
             
-            if (error.message) {
-                errorMsg = `게임 참여 실패: ${error.message}`;
+            console.error('게임 초기화 실패:', error);
+            
+            // 오류 상세 정보 로깅
+            console.log('게임 초기화 오류 상세 정보');
+            console.log('오류 메시지:', error.message || '알 수 없는 오류');
+            console.log('오류 객체:', error);
+            console.log('브라우저:', navigator.userAgent);
+            console.log('PeerJS 상태:', window.peerJSLoaded ? '로드됨' : '로드 안됨');
+            
+            let errorMessage = '연결 오류가 발생했습니다.\n';
+            
+            // 오류 유형에 따른 메시지 처리
+            if (error.type === 'network' || error.message && error.message.includes('network')) {
+                errorMessage += '네트워크 연결을 확인해주세요.';
+            } else if (error.type === 'peer-unavailable') {
+                errorMessage += '존재하지 않는 방입니다.';
+            } else if (error.type === 'unavailable-id') {
+                errorMessage += '이미 사용 중인 ID입니다.';
+            } else if (error.message && error.message.includes('시간 초과')) {
+                errorMessage += '연결 시간이 초과되었습니다. 다시 시도해주세요.';
+            } else if (error.message && error.message.includes('SSL')) {
+                errorMessage += 'SSL 연결 오류가 발생했습니다. HTTPS 환경에서 실행해주세요.';
+            } else {
+                errorMessage += '알 수 없는 오류가 발생했습니다. 페이지를 새로고침 후 다시 시도해주세요.';
             }
             
-            alert(errorMsg);
+            // 브라우저 캐시 삭제 방법 안내
+            errorMessage += '\n\n문제가 지속될 경우:';
+            errorMessage += '\n1. 브라우저 캐시 삭제: Ctrl+Shift+Delete (Chrome/Edge) 또는 Command+Shift+Delete (Safari)';
+            errorMessage += '\n2. 시크릿/비공개 브라우징 모드에서 접속: Ctrl+Shift+N (Chrome) 또는 Ctrl+Shift+P (Firefox)';
+            errorMessage += '\n3. 다른 브라우저에서 시도: Chrome, Firefox, Edge 등';
             
-            // 개발자 콘솔에 상세 정보 기록
-            console.group('게임 참여 오류 상세 정보');
-            console.error('오류 메시지:', error.message);
-            console.error('오류 객체:', error);
-            console.groupEnd();
+            alert(errorMessage);
         }
     });
     
@@ -301,21 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 자유 채팅 메시지 표시
         showFreeChatMessage(freeChatData.nickname, freeChatData.message);
-    }
-    
-    // 닉네임 유효성 검사
-    function validateNickname(nickname) {
-        if (!nickname) {
-            alert('닉네임을 입력해주세요.');
-            return false;
-        }
-        
-        if (nickname.length < 1 || nickname.length > 6) {
-            alert('닉네임은 1자 이상 6자 이하로 입력해주세요.');
-            return false;
-        }
-        
-        return true;
     }
     
     // 게임 이벤트 리스너 설정

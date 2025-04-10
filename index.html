@@ -191,7 +191,8 @@
         // PeerJS 로드 여부 확인 변수
         window.peerJSLoaded = false;
     </script>
-    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js" 
+    <!-- 최신 버전의 PeerJS 로드 -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js" 
             onerror="console.error('PeerJS 로드 실패 (기본 CDN)');"
             onload="window.peerJSLoaded = true; console.log('PeerJS 로드 성공');">
     </script>
@@ -202,14 +203,24 @@
             if (!window.peerJSLoaded) {
                 console.log('대체 PeerJS CDN 시도 중...');
                 var script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.1/dist/peerjs.min.js';
+                script.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
                 script.onload = function() { 
                     window.peerJSLoaded = true; 
                     console.log('대체 PeerJS 로드 성공'); 
                 };
                 script.onerror = function() { 
-                    console.error('모든 PeerJS CDN 로드 실패!'); 
-                    alert('PeerJS 라이브러리 로드에 실패했습니다. 페이지를 새로고침하거나 다른 브라우저에서 다시 시도해주세요.');
+                    console.error('두 번째 CDN 로드 실패, 세 번째 시도...');
+                    var script2 = document.createElement('script');
+                    script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.1/peerjs.min.js';
+                    script2.onload = function() {
+                        window.peerJSLoaded = true;
+                        console.log('세 번째 PeerJS 로드 성공');
+                    };
+                    script2.onerror = function() {
+                        console.error('모든 PeerJS CDN 로드 실패!'); 
+                        alert('PeerJS 라이브러리 로드에 실패했습니다. 페이지를 새로고침하거나 다른 브라우저에서 다시 시도해주세요.');
+                    };
+                    document.head.appendChild(script2);
                 };
                 document.head.appendChild(script);
             }

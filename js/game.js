@@ -56,18 +56,17 @@ class LiarGame {
                         { urls: 'stun:stun1.l.google.com:19302' },
                         { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' }
+                        { urls: 'stun:stun4.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
                     ]
-                },
-                reconnectTimer: 3000,
-                pingInterval: 5000
+                }
             });
             
             // 타임아웃 설정
             const timeout = setTimeout(() => {
                 this.peer.destroy();
                 reject(new Error('고정 ID 접속 시간 초과'));
-            }, 5000);
+            }, 10000);
             
             // ID 할당 성공 (방장이 됨)
             this.peer.on('open', id => {
@@ -99,10 +98,10 @@ class LiarGame {
 
         try {
             console.log("PeerJS 인스턴스 생성 시작");
-            // PeerJS 인스턴스 생성 - 기본 PeerJS 클라우드 서버 사용
-            this.peer = new Peer(null, {
+            
+            // PeerJS 인스턴스 생성 - 기본 서버 사용 (모든 명시적 설정 제거)
+            this.peer = new Peer({
                 debug: 3, // 최대 디버그 레벨
-                // 명시적 호스트 설정 제거 - 기본 PeerJS 서버 사용
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -121,7 +120,7 @@ class LiarGame {
             await new Promise((resolve, reject) => {
                 let timeout = setTimeout(() => {
                     reject(new Error("PeerJS 연결 시간 초과"));
-                }, 10000); // 10초 타임아웃
+                }, 15000); // 15초 타임아웃으로 증가
                 
                 this.peer.on('open', id => {
                     clearTimeout(timeout);
