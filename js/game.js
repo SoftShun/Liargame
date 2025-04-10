@@ -1,15 +1,14 @@
 /**
  * 라이어 게임 로직
- * PeerJS를 사용하여 P2P 연결을 구현합니다.
+ * Firebase Realtime Database를 사용하여 실시간 통신을 구현합니다.
  */
 
 class LiarGame {
     constructor() {
-        this.peer = null;
-        this.connections = [];
-        this.players = [];
         this.myId = null;
+        this.nickname = null;
         this.isHost = false;
+        this.players = [];
         this.gameStarted = false;
         this.gameMode = 'basic'; // 'basic' 또는 'spy'
         this.currentCategory = null;
@@ -25,6 +24,10 @@ class LiarGame {
         this.voteTimer = null;
         this.guessTimer = null;
         this.eventListeners = {};
+        this.gameRef = null;
+        this.playersRef = null;
+        this.messagesRef = null;
+        this.connectionRef = null;
     }
 
     // 이벤트 리스너 등록
@@ -42,432 +45,359 @@ class LiarGame {
         }
     }
 
-    // 게임 초기화 및 피어 연결
+    // 게임 초기화 및 Firebase 연결
     async init(nickname) {
         if (nickname.length < 1 || nickname.length > 6) {
             throw new Error('닉네임은 1자 이상 6자 이하로 입력해주세요.');
         }
 
         try {
-            console.log("PeerJS 인스턴스 생성 시작");
+            this.nickname = nickname;
+            this.myId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
             
-            // 랜덤 ID로 Peer 생성
-            this.peer = new Peer({
-                debug: 2,
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' }
-                    ]
+            // Firebase 참조 설정
+            this.gameRef = database.ref('liargame');
+            this.playersRef = this.gameRef.child('players');
+            this.messagesRef = this.gameRef.child('messages');
+            
+            // 플레이어 정보 저장
+            const playerData = {
+                id: this.myId,
+                nickname: nickname,
+                isHost: false,
+                isLiar: false,
+                isSpy: false,
+                score: 0,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            await this.playersRef.child(this.myId).set(playerData);
+            
+            // 첫 번째 플레이어 확인 (방장 설정)
+            const playersSnapshot = await this.playersRef.once('value');
+            if (playersSnapshot.numChildren() === 1) {
+                this.isHost = true;
+                await this.playersRef.child(this.myId).update({ isHost: true });
+            }
+            
+            // 플레이어 목록 이벤트 리스너 설정
+            this.playersRef.on('child_added', this.handlePlayerAdded.bind(this));
+            this.playersRef.on('child_removed', this.handlePlayerRemoved.bind(this));
+            this.playersRef.on('child_changed', this.handlePlayerChanged.bind(this));
+            
+            // 메시지 이벤트 리스너 설정
+            this.messagesRef.on('child_added', this.handleMessageAdded.bind(this));
+            
+            // 게임 상태 이벤트 리스너 설정
+            this.gameRef.child('gameState').on('value', this.handleGameStateChanged.bind(this));
+            
+            // 연결 상태 모니터링
+            this.connectionRef = database.ref('.info/connected');
+            this.connectionRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    // 연결되었을 때
+                    const playerRef = this.playersRef.child(this.myId);
+                    
+                    // 연결 해제 시 자동 삭제
+                    playerRef.onDisconnect().remove();
+                    
+                    // 마지막 활동 시간 업데이트
+                    playerRef.update({
+                        lastActive: firebase.database.ServerValue.TIMESTAMP
+                    });
                 }
             });
             
-            // 연결 설정 완료 대기
-            await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error("PeerJS 연결 시간 초과"));
-                }, 10000);
-                
-                this.peer.on('open', id => {
-                    clearTimeout(timeout);
-                    console.log("PeerJS ID 할당됨:", id);
-                    this.myId = id;
-                    
-                    // 첫 번째 플레이어가 방장이 됨
-                    this.isHost = true;
-                    
-                    resolve();
+            // 비활성 플레이어 정리 (5분 이상 비활성 상태인 플레이어 제거)
+            setInterval(() => {
+                const now = Date.now();
+                this.playersRef.once('value', (snapshot) => {
+                    snapshot.forEach((playerSnap) => {
+                        const player = playerSnap.val();
+                        if (player && player.lastActive && now - player.lastActive > 5 * 60 * 1000) {
+                            this.playersRef.child(player.id).remove();
+                        }
+                    });
                 });
-                
-                this.peer.on('error', err => {
-                    clearTimeout(timeout);
-                    console.error("PeerJS 오류:", err);
-                    reject(err);
-                });
-            });
-
-            // 플레이어 정보 저장
-            this.players.push({
-                id: this.myId,
-                nickname: nickname,
-                isHost: this.isHost,
-                isLiar: false,
-                isSpy: false,
-                score: 0
-            });
-
-            // 연결 요청 처리
-            this.peer.on('connection', conn => {
-                console.log("새 연결 요청 받음:", conn.peer);
-                this.handleNewConnection(conn);
-            });
-
-            console.log('게임 초기화 완료, 내 ID:', this.myId, '방장 여부:', this.isHost);
+            }, 60 * 1000); // 1분마다 체크
+            
+            // 초기화 완료 이벤트 발생
             this.emit('initialized', { id: this.myId, isHost: this.isHost });
             return this.myId;
+            
         } catch (error) {
             console.error('게임 초기화 실패:', error);
             throw error;
         }
     }
     
-    // 방 생성 - 호스트가 방을 만드는 함수 (단순히 ID 반환)
-    createRoom(roomId = null) {
-        if (!this.isHost) {
-            console.error('방장만 방을 생성할 수 있습니다.');
-            return null;
-        }
+    // 플레이어 추가 이벤트 처리
+    handlePlayerAdded(snapshot) {
+        const playerData = snapshot.val();
         
-        // 지정된 방 ID가 있으면 사용, 없으면 자신의 ID 사용
-        const actualRoomId = roomId || this.myId;
-        console.log('방 생성 완료, 방 ID:', actualRoomId);
-        
-        // 방 생성 성공 이벤트 발생
-        this.emit('roomCreated', { roomId: actualRoomId });
-        
-        return actualRoomId;
-    }
-
-    // 방 참가 - 다른 플레이어가 호스트 방에 참가하는 함수
-    async joinRoom(roomId) {
-        if (!roomId) {
-            throw new Error('방 ID가 필요합니다.');
-        }
-        
-        console.log('방 참가 시도:', roomId);
-        
-        return new Promise((resolve, reject) => {
-            try {
-                // 호스트에게 연결 시도
-                const conn = this.peer.connect(roomId, {
-                    reliable: true
-                });
-                
-                // 연결 타임아웃 설정
-                const timeout = setTimeout(() => {
-                    reject(new Error('방 참가 시간 초과'));
-                }, 10000);
-                
-                // 연결 성공 시
-                conn.on('open', () => {
-                    clearTimeout(timeout);
-                    console.log('호스트에게 연결 성공:', roomId);
-                    
-                    // 자신을 방장이 아니라고 설정
-                    this.isHost = false;
-                    
-                    // 방장 ID 저장
-                    this.hostId = roomId;
-                    
-                    // 연결 리스트에 추가
-                    this.connections.push(conn);
-                    
-                    // 연결 리스너 설정
-                    this.setupConnectionListeners(conn);
-                    
-                    // 플레이어 정보 전송
-                    const playerInfo = this.players.find(p => p.id === this.myId);
-                    if (playerInfo) {
-                        playerInfo.isHost = false; // 다시 확인
-                        
-                        conn.send({
-                            type: 'playerJoin',
-                            player: {
-                                id: playerInfo.id,
-                                nickname: playerInfo.nickname,
-                                isHost: playerInfo.isHost
-                            }
-                        });
-                    } else {
-                        console.error('플레이어 정보를 찾을 수 없음');
-                        reject(new Error('플레이어 정보를 찾을 수 없음'));
-                        return;
-                    }
-                    
-                    // 방 참가 성공 이벤트 발생
-                    this.emit('roomJoined', { roomId: roomId });
-                    resolve();
-                });
-                
-                conn.on('error', err => {
-                    clearTimeout(timeout);
-                    console.error('방 참가 오류:', err);
-                    reject(err);
-                });
-            } catch (err) {
-                console.error('방 참가 요청 생성 중 오류:', err);
-                reject(err);
-            }
-        });
-    }
-
-    // 새로운 연결 처리
-    handleNewConnection(conn) {
-        console.log('새 연결 요청 처리:', conn.peer);
-        
-        // 중복 연결 체크
-        const existingConn = this.connections.find(c => c.peer === conn.peer);
-        if (existingConn) {
-            console.log('이미 연결된 피어:', conn.peer);
+        // 이미 게임이 시작됐는지 확인
+        if (this.gameStarted && playerData.id !== this.myId) {
+            // 게임이 시작된 후 들어온 플레이어는 관전자로 처리
+            this.spectators.push(playerData);
+            this.emit('spectatorJoined', { nickname: playerData.nickname });
             return;
         }
         
-        conn.on('open', () => {
-            console.log('연결 성공:', conn.peer);
-            
-            // 연결 리스트에 추가
-            this.connections.push(conn);
-            
-            // 연결 리스너 설정
-            this.setupConnectionListeners(conn);
-
-            // 이미 게임이 시작되었다면 관전자로 처리
-            if (this.gameStarted) {
-                console.log('게임이 이미 시작됨, 관전자로 처리:', conn.peer);
-                conn.send({
-                    type: 'gameAlreadyStarted',
-                    gameState: this.getGameState()
-                });
-            } else {
-                // 현재 방 상태 전송
-                console.log('현재 방 상태 전송:', conn.peer);
-                conn.send({
-                    type: 'roomState',
-                    players: this.players.map(p => ({
-                        id: p.id,
-                        nickname: p.nickname,
-                        isHost: p.isHost,
-                        score: p.score
-                    })),
-                    gameMode: this.gameMode
-                });
-            }
-        });
-        
-        conn.on('error', (err) => {
-            console.error('연결 오류:', conn.peer, err);
-        });
-    }
-
-    // 연결에 대한 리스너 설정
-    setupConnectionListeners(conn) {
-        console.log('연결 리스너 설정:', conn.peer);
-        
-        // 데이터 수신 리스너
-        conn.on('data', data => {
-            console.log('데이터 수신:', conn.peer, data && data.type);
-            this.handleMessage(conn, data);
-        });
-
-        // 연결 종료 리스너
-        conn.on('close', () => {
-            console.log('연결 종료:', conn.peer);
-            this.handleDisconnect(conn);
-        });
-
-        // 오류 리스너
-        conn.on('error', err => {
-            console.error('연결 오류:', conn.peer, err);
-            this.handleDisconnect(conn);
-        });
-    }
-
-    // 메시지 처리
-    handleMessage(conn, data) {
-        console.log('메시지 수신:', data);
-
-        switch (data.type) {
-            case 'playerJoin':
-                this.handlePlayerJoin(conn, data.player);
-                break;
-            case 'gameMode':
-                this.setGameMode(data.mode);
-                break;
-            case 'startGame':
-                this.startGame();
-                break;
-            case 'chat':
-                this.handleChat(data);
-                break;
-            case 'turnEnd':
-                this.nextTurn();
-                break;
-            case 'vote':
-                this.handleVote(data.from, data.target);
-                break;
-            case 'guess':
-                this.handleGuess(data.playerId, data.word);
-                break;
-            case 'restartGame':
-                this.restartGame();
-                break;
-            case 'freeChat':
-                // 자유 채팅 메시지는 그대로 전달만 합니다.
-                this.broadcastToAll(data);
-                break;
-            default:
-                console.log('알 수 없는 메시지 유형:', data.type);
+        // 지역 플레이어 목록에 추가
+        const existingPlayerIndex = this.players.findIndex(p => p.id === playerData.id);
+        if (existingPlayerIndex === -1) {
+            this.players.push(playerData);
+        } else {
+            this.players[existingPlayerIndex] = playerData;
         }
-    }
-
-    // 플레이어 입장 처리
-    handlePlayerJoin(conn, player) {
-        console.log('플레이어 입장 처리:', player);
         
-        // 이미 게임이 시작됐으면 관전자로 처리
-        if (this.gameStarted) {
-            console.log('게임이 이미 시작됨, 관전자로 처리:', player.nickname);
-            this.spectators.push({
-                id: player.id,
-                nickname: player.nickname,
-                connection: conn
+        // 이벤트 발생 (자신 제외)
+        if (playerData.id !== this.myId) {
+            this.emit('playerJoined', { 
+                id: playerData.id,
+                nickname: playerData.nickname
             });
-            
-            conn.send({
-                type: 'spectatorMode',
-                gameState: this.getGameState()
-            });
-            
-            this.broadcastToAll({
-                type: 'spectatorJoined',
-                nickname: player.nickname
-            });
-            
-            this.emit('spectatorJoined', { nickname: player.nickname });
-            return;
         }
-
-        // 기본 정보 검증
-        if (!player || !player.id || !player.nickname) {
-            console.error('플레이어 정보가 유효하지 않음:', player);
-            return;
-        }
-
-        // 이미 있는 플레이어인지 확인
-        const existingPlayer = this.players.find(p => p.id === player.id);
-        if (existingPlayer) {
-            console.log('이미 등록된 플레이어:', player.nickname);
-            return;
-        }
-
-        // 최대 8명까지만 입장 가능
-        if (this.players.length >= 8) {
-            console.log('방이 가득 참:', player.nickname);
-            conn.send({
-                type: 'roomFull'
-            });
-            return;
-        }
-
-        // 플레이어 추가
-        const newPlayer = {
-            id: player.id,
-            nickname: player.nickname,
-            isHost: false,
-            isLiar: false,
-            isSpy: false,
-            score: 0,
-            connection: conn
-        };
-        
-        this.players.push(newPlayer);
-        console.log('플레이어 추가됨:', newPlayer.nickname);
-
-        // 다른 모든 플레이어에게 새 플레이어 정보 전송
-        const playerInfoToSend = {
-            id: player.id,
-            nickname: player.nickname,
-            isHost: false,
-            score: 0
-        };
-        
-        this.broadcastToAll({
-            type: 'playerJoined',
-            player: playerInfoToSend
-        }, [conn]);
-
-        // 이벤트 발생
-        this.emit('playerJoined', { 
-            id: player.id,
-            nickname: player.nickname
-        });
-        
-        // 현재 방 상태 전송
-        conn.send({
-            type: 'roomState',
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname, 
-                isHost: p.isHost,
-                score: p.score
-            })),
-            gameMode: this.gameMode
-        });
     }
-
-    // 연결 끊김 처리
-    handleDisconnect(conn) {
-        // 연결 리스트에서 제거
-        const index = this.connections.findIndex(c => c === conn);
-        if (index > -1) {
-            this.connections.splice(index, 1);
-        }
-
-        // 관전자인 경우
-        const spectatorIndex = this.spectators.findIndex(s => s.connection === conn);
+    
+    // 플레이어 제거 이벤트 처리
+    handlePlayerRemoved(snapshot) {
+        const playerData = snapshot.val();
+        
+        // 관전자 목록에서 확인
+        const spectatorIndex = this.spectators.findIndex(s => s.id === playerData.id);
         if (spectatorIndex > -1) {
             const spectator = this.spectators[spectatorIndex];
             this.spectators.splice(spectatorIndex, 1);
-            
-            this.broadcastToAll({
-                type: 'spectatorLeft',
-                nickname: spectator.nickname
-            });
-            
             this.emit('spectatorLeft', { nickname: spectator.nickname });
             return;
         }
-
-        // 플레이어인 경우
-        const playerIndex = this.players.findIndex(p => p.connection === conn);
+        
+        // 플레이어 목록에서 제거
+        const playerIndex = this.players.findIndex(p => p.id === playerData.id);
         if (playerIndex > -1) {
             const player = this.players[playerIndex];
             this.players.splice(playerIndex, 1);
-            
-            // 다른 모든 플레이어에게 알림
-            this.broadcastToAll({
-                type: 'playerLeft',
-                playerId: player.id,
-                nickname: player.nickname
-            });
             
             this.emit('playerLeft', { 
                 id: player.id,
                 nickname: player.nickname
             });
-
+            
             // 호스트가 나간 경우 새 호스트 지정
             if (player.isHost && this.players.length > 0) {
-                this.players[0].isHost = true;
-                if (this.players[0].id === this.myId) {
+                const newHost = this.players[0];
+                if (newHost.id === this.myId) {
                     this.isHost = true;
+                    this.playersRef.child(this.myId).update({ isHost: true });
                 }
                 
-                this.broadcastToAll({
-                    type: 'newHost',
-                    hostId: this.players[0].id,
-                    nickname: this.players[0].nickname
-                });
-                
                 this.emit('newHost', {
-                    id: this.players[0].id,
-                    nickname: this.players[0].nickname
+                    id: newHost.id,
+                    nickname: newHost.nickname
                 });
             }
-
-            // 게임 진행 중이었다면 게임 종료
+            
+            // 게임 진행 중이었다면 게임 종료 확인
             if (this.gameStarted && this.players.length < 1) {
                 this.endGame('인원 부족으로 게임이 종료되었습니다.');
             }
+        }
+    }
+    
+    // 플레이어 변경 이벤트 처리
+    handlePlayerChanged(snapshot) {
+        const playerData = snapshot.val();
+        const playerIndex = this.players.findIndex(p => p.id === playerData.id);
+        
+        if (playerIndex > -1) {
+            const oldPlayer = this.players[playerIndex];
+            this.players[playerIndex] = playerData;
+            
+            // 방장 변경 확인
+            if (!oldPlayer.isHost && playerData.isHost) {
+                this.emit('newHost', {
+                    id: playerData.id,
+                    nickname: playerData.nickname
+                });
+                
+                // 자신이 방장이 된 경우
+                if (playerData.id === this.myId) {
+                    this.isHost = true;
+                }
+            }
+        }
+    }
+    
+    // 게임 상태 변경 이벤트 처리
+    handleGameStateChanged(snapshot) {
+        const gameState = snapshot.val();
+        if (!gameState) return;
+        
+        // 게임 모드 변경
+        if (gameState.gameMode !== this.gameMode) {
+            this.gameMode = gameState.gameMode;
+            this.emit('gameModeChanged', { mode: this.gameMode });
+        }
+        
+        // 게임 시작
+        if (gameState.gameStarted && !this.gameStarted) {
+            this.gameStarted = true;
+            this.gamePhase = gameState.gamePhase;
+            this.currentCategory = gameState.category;
+            this.currentWord = gameState.word;
+            this.liar = gameState.liar;
+            this.spy = gameState.spy;
+            this.turnOrder = gameState.turnOrder || [];
+            this.currentTurn = gameState.currentTurn || 0;
+            
+            // 자신의 역할 확인
+            const isLiar = this.liar === this.myId;
+            const isSpy = this.spy === this.myId;
+            
+            // 게임 시작 이벤트 발생
+            this.emit('gameStarted', {
+                category: this.currentCategory,
+                word: isLiar ? null : this.currentWord,
+                isLiar: isLiar,
+                isSpy: isSpy,
+                turnOrder: this.turnOrder.map(playerId => {
+                    const player = this.players.find(p => p.id === playerId);
+                    return {
+                        id: playerId,
+                        nickname: player ? player.nickname : 'Unknown'
+                    };
+                })
+            });
+            
+            // 현재 턴 정보 이벤트 발생
+            if (this.turnOrder.length > 0 && this.currentTurn < this.turnOrder.length) {
+                const currentPlayerId = this.turnOrder[this.currentTurn];
+                const currentPlayer = this.players.find(p => p.id === currentPlayerId);
+                
+                this.emit('turnStart', {
+                    playerId: currentPlayerId,
+                    nickname: currentPlayer ? currentPlayer.nickname : 'Unknown',
+                    turnNumber: this.currentTurn + 1
+                });
+            }
+        }
+        
+        // 턴 변경
+        if (this.gameStarted && gameState.currentTurn !== this.currentTurn) {
+            this.currentTurn = gameState.currentTurn;
+            
+            if (this.gamePhase === 'playing' && this.currentTurn < this.turnOrder.length) {
+                const currentPlayerId = this.turnOrder[this.currentTurn];
+                const currentPlayer = this.players.find(p => p.id === currentPlayerId);
+                
+                this.emit('turnStart', {
+                    playerId: currentPlayerId,
+                    nickname: currentPlayer ? currentPlayer.nickname : 'Unknown',
+                    turnNumber: this.currentTurn + 1
+                });
+            }
+        }
+        
+        // 게임 단계 변경
+        if (this.gameStarted && gameState.gamePhase !== this.gamePhase) {
+            this.gamePhase = gameState.gamePhase;
+            
+            // 투표 시작
+            if (this.gamePhase === 'voting') {
+                this.emit('voteStart', {
+                    players: this.players.map(p => ({
+                        id: p.id,
+                        nickname: p.nickname
+                    }))
+                });
+            }
+            
+            // 라이어 추측 시작
+            if (this.gamePhase === 'wordGuess') {
+                const liarPlayer = this.players.find(p => p.id === this.liar);
+                
+                this.emit('wordGuessStart', {
+                    liarId: this.liar,
+                    liarNickname: liarPlayer ? liarPlayer.nickname : 'Unknown'
+                });
+            }
+            
+            // 게임 결과 (결과 단계)
+            if (this.gamePhase === 'result' && gameState.gameResult) {
+                if (gameState.voteResult) {
+                    this.votes = gameState.votes || {};
+                    
+                    this.emit('voteResult', {
+                        votes: this.votes,
+                        voteCount: gameState.voteCount || {},
+                        gameResult: gameState.gameResult,
+                        playerScores: gameState.playerScores || []
+                    });
+                } else {
+                    this.emit('gameResult', {
+                        gameResult: gameState.gameResult,
+                        playerScores: gameState.playerScores || []
+                    });
+                }
+            }
+        }
+        
+        // 게임 재시작
+        if (this.gameStarted && !gameState.gameStarted) {
+            this.gameStarted = false;
+            this.gamePhase = 'lobby';
+            
+            // 플레이어 상태 초기화
+            for (const player of this.players) {
+                player.isLiar = false;
+                player.isSpy = false;
+            }
+            
+            // 관전자들을 플레이어로 변경
+            for (const spectator of this.spectators) {
+                this.players.push({
+                    id: spectator.id,
+                    nickname: spectator.nickname,
+                    isHost: false,
+                    isLiar: false,
+                    isSpy: false,
+                    score: 0
+                });
+            }
+            this.spectators = [];
+            
+            this.emit('gameRestarted', {
+                players: this.players.map(p => ({
+                    id: p.id,
+                    nickname: p.nickname,
+                    isHost: p.isHost,
+                    score: p.score
+                }))
+            });
+        }
+    }
+    
+    // 메시지 추가 이벤트 처리
+    handleMessageAdded(snapshot) {
+        const message = snapshot.val();
+        
+        switch (message.type) {
+            case 'turnChat':
+                this.emit('turnChat', {
+                    playerId: message.playerId,
+                    nickname: message.nickname,
+                    message: message.content
+                });
+                break;
+                
+            case 'freeChat':
+                this.emit('chat', {
+                    playerId: message.playerId,
+                    nickname: message.nickname,
+                    message: message.content
+                });
+                break;
         }
     }
 
@@ -477,50 +407,18 @@ class LiarGame {
         if (mode !== 'basic' && mode !== 'spy') return;
         
         this.gameMode = mode;
-        this.broadcastToAll({
-            type: 'gameMode',
-            mode: mode
-        });
-        
-        this.emit('gameModeChanged', { mode });
-    }
-
-    // 1인 플레이 게임 종료 처리
-    handleSoloGameEnd() {
-        this.gamePhase = 'result';
-        
-        // 자동으로 라이어 승리
-        const gameResult = {
-            result: 'liarWin',
-            liarId: this.liar,
-            liarNickname: this.players.find(p => p.id === this.liar).nickname,
-            word: this.currentWord,
-            isSoloGame: true
-        };
-        
-        // 점수 계산
-        this.updateScores(gameResult.result);
-        
-        // 게임 결과 전송
-        this.emit('gameResult', {
-            gameResult: gameResult,
-            playerScores: this.players.map(p => ({ id: p.id, nickname: p.nickname, score: p.score }))
+        this.gameRef.child('gameState').update({
+            gameMode: mode
         });
     }
 
     // 게임 시작
     startGame() {
         if (!this.isHost) return;
-        // 1명으로도 게임 시작 가능하도록 수정
         if (this.players.length < 1) {
             this.emit('error', { message: '게임을 시작하려면 최소 1명 이상이 필요합니다.' });
             return;
         }
-        
-        // 게임 상태 초기화
-        this.gameStarted = true;
-        this.gamePhase = 'playing';
-        this.resetVotes();
         
         // 카테고리와 단어 선택
         const category = gameData.getRandomCategory();
@@ -532,11 +430,9 @@ class LiarGame {
         
         // 라이어 선정
         const liarIndex = Math.floor(Math.random() * playerCount);
-        this.players[liarIndex].isLiar = true;
         this.liar = this.players[liarIndex].id;
         
         // 스파이 모드인 경우 스파이 선정 (라이어와 다른 사람)
-        // 플레이어가 2명 이상일 때만 스파이 선정
         this.spy = null; // 기본값으로 null 설정
         if (this.gameMode === 'spy' && playerCount >= 2) {
             let spyIndex;
@@ -544,12 +440,11 @@ class LiarGame {
                 spyIndex = Math.floor(Math.random() * playerCount);
             } while (spyIndex === liarIndex);
             
-            this.players[spyIndex].isSpy = true;
             this.spy = this.players[spyIndex].id;
         }
         
         // 발언 순서 랜덤 설정
-        this.turnOrder = [...this.players];
+        this.turnOrder = this.players.map(p => p.id);
         for (let i = this.turnOrder.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [this.turnOrder[i], this.turnOrder[j]] = [this.turnOrder[j], this.turnOrder[i]];
@@ -557,62 +452,25 @@ class LiarGame {
         
         this.currentTurn = 0;
         
-        // 각 플레이어에게 게임 정보 전송
-        for (const player of this.players) {
-            let playerMessage = {
-                type: 'gameStarted',
-                category: this.currentCategory,
-                isLiar: player.id === this.liar,
-                isSpy: player.id === this.spy,
-                turnOrder: this.turnOrder.map(p => ({ 
-                    id: p.id, 
-                    nickname: p.nickname 
-                })),
-                playerId: player.id
-            };
-            
-            // 라이어가 아닌 경우에만 단어 전달
-            if (player.id !== this.liar) {
-                playerMessage.word = this.currentWord;
-            }
-            
-            // 플레이어에게 정보 전송
-            if (player.id === this.myId) {
-                this.emit('gameStarted', playerMessage);
-            } else {
-                player.connection.send(playerMessage);
-            }
-        }
-        
-        // 관전자들에게 게임 정보 전송 (단어 제외)
-        for (const spectator of this.spectators) {
-            spectator.connection.send({
-                type: 'gameStartedSpectator',
-                category: this.currentCategory,
-                turnOrder: this.turnOrder.map(p => ({ 
-                    id: p.id, 
-                    nickname: p.nickname 
-                }))
-            });
-        }
-        
-        // 현재 턴 정보 전송
-        this.broadcastToAll({
-            type: 'turnStart',
-            playerId: this.turnOrder[this.currentTurn].id,
-            nickname: this.turnOrder[this.currentTurn].nickname,
-            turnNumber: this.currentTurn + 1
-        });
-        
-        this.emit('turnStart', {
-            playerId: this.turnOrder[this.currentTurn].id,
-            nickname: this.turnOrder[this.currentTurn].nickname,
-            turnNumber: this.currentTurn + 1
+        // 게임 상태 저장
+        this.gameRef.child('gameState').set({
+            gameStarted: true,
+            gamePhase: 'playing',
+            gameMode: this.gameMode,
+            category: this.currentCategory,
+            word: this.currentWord,
+            liar: this.liar,
+            spy: this.spy,
+            turnOrder: this.turnOrder,
+            currentTurn: this.currentTurn,
+            startTime: firebase.database.ServerValue.TIMESTAMP
         });
     }
 
     // 턴 종료 및 다음 턴 설정
     nextTurn() {
+        if (!this.isHost) return;
+        
         this.currentTurn++;
         
         // 모든 플레이어가 발언했으면 투표 단계로
@@ -627,97 +485,134 @@ class LiarGame {
             return;
         }
         
-        // 현재 턴 정보 전송
-        this.broadcastToAll({
-            type: 'turnStart',
-            playerId: this.turnOrder[this.currentTurn].id,
-            nickname: this.turnOrder[this.currentTurn].nickname,
-            turnNumber: this.currentTurn + 1
+        // 현재 턴 업데이트
+        this.gameRef.child('gameState').update({
+            currentTurn: this.currentTurn
         });
+    }
+
+    // 1인 플레이 게임 종료 처리
+    handleSoloGameEnd() {
+        if (!this.isHost) return;
         
-        this.emit('turnStart', {
-            playerId: this.turnOrder[this.currentTurn].id,
-            nickname: this.turnOrder[this.currentTurn].nickname,
-            turnNumber: this.currentTurn + 1
+        // 자동으로 라이어 승리
+        const gameResult = {
+            result: 'liarWin',
+            liarId: this.liar,
+            liarNickname: this.players.find(p => p.id === this.liar).nickname,
+            word: this.currentWord,
+            isSoloGame: true
+        };
+        
+        // 점수 계산
+        const playerScores = this.updateScores(gameResult.result);
+        
+        // 게임 결과 저장
+        this.gameRef.child('gameState').update({
+            gamePhase: 'result',
+            gameResult: gameResult,
+            playerScores: playerScores
         });
     }
 
     // 투표 시작
     startVoting() {
-        this.gamePhase = 'voting';
+        if (!this.isHost) return;
+        
         this.resetVotes();
+        
+        // 게임 상태 업데이트
+        this.gameRef.child('gameState').update({
+            gamePhase: 'voting',
+            votes: {}
+        });
         
         // 20초 타이머 설정
         this.voteTimer = setTimeout(() => {
             this.endVoting();
         }, 20000);
-        
-        this.broadcastToAll({
-            type: 'voteStart',
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname
-            }))
-        });
-        
-        this.emit('voteStart', {
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname
-            }))
-        });
     }
 
     // 투표 처리
-    handleVote(fromId, targetId) {
-        this.votes[fromId] = targetId;
+    submitVote(targetId) {
+        if (this.gamePhase !== 'voting') return;
         
-        // 모든 플레이어가 투표했는지 확인
-        const allVoted = this.players.every(p => this.votes[p.id] !== undefined);
-        
-        if (allVoted) {
-            clearTimeout(this.voteTimer);
-            this.endVoting();
-        }
+        // 투표 저장
+        this.gameRef.child('gameState/votes').child(this.myId).set(targetId);
     }
 
     // 투표 종료 및 결과 처리
     endVoting() {
-        // 투표 집계
-        const voteCount = {};
+        if (!this.isHost) return;
         
-        for (const playerId in this.votes) {
-            const targetId = this.votes[playerId];
-            if (!targetId) continue; // 기권표는 건너뜀
+        // 투표 타이머 중지
+        clearTimeout(this.voteTimer);
+        
+        // 투표 데이터 가져오기
+        this.gameRef.child('gameState/votes').once('value', (snapshot) => {
+            const votes = snapshot.val() || {};
             
-            if (!voteCount[targetId]) {
-                voteCount[targetId] = 0;
+            // 투표 집계
+            const voteCount = {};
+            
+            for (const playerId in votes) {
+                const targetId = votes[playerId];
+                if (!targetId) continue; // 기권표는 건너뜀
+                
+                if (!voteCount[targetId]) {
+                    voteCount[targetId] = 0;
+                }
+                voteCount[targetId]++;
             }
-            voteCount[targetId]++;
-        }
-        
-        // 최다 득표자 찾기
-        let maxVotes = 0;
-        let maxVotePlayer = null;
-        
-        for (const targetId in voteCount) {
-            if (voteCount[targetId] > maxVotes) {
-                maxVotes = voteCount[targetId];
-                maxVotePlayer = targetId;
+            
+            // 최다 득표자 찾기
+            let maxVotes = 0;
+            let maxVotePlayer = null;
+            
+            for (const targetId in voteCount) {
+                if (voteCount[targetId] > maxVotes) {
+                    maxVotes = voteCount[targetId];
+                    maxVotePlayer = targetId;
+                }
             }
-        }
-        
-        // 과반수 확인
-        const majorityThreshold = Math.floor(this.players.length / 2) + 1;
-        let gameResult;
-        
-        if (maxVotes >= majorityThreshold) {
-            // 라이어가 지목된 경우
-            if (maxVotePlayer === this.liar) {
-                this.startWordGuessing();
-                return;
+            
+            // 과반수 확인
+            const majorityThreshold = Math.floor(this.players.length / 2) + 1;
+            let gameResult;
+            
+            if (maxVotes >= majorityThreshold) {
+                // 라이어가 지목된 경우
+                if (maxVotePlayer === this.liar) {
+                    // 게임 상태 업데이트 (라이어 추측 단계)
+                    this.gameRef.child('gameState').update({
+                        gamePhase: 'wordGuess',
+                        votes: votes,
+                        voteCount: voteCount
+                    });
+                    
+                    // 라이어 추측 타이머 설정
+                    this.guessTimer = setTimeout(() => {
+                        this.handleGuess('');
+                    }, 20000);
+                    
+                    return;
+                } else {
+                    // 라이어가 아닌 사람이 지목된 경우
+                    gameResult = {
+                        result: 'liarWin',
+                        liarId: this.liar,
+                        liarNickname: this.players.find(p => p.id === this.liar).nickname,
+                        word: this.currentWord
+                    };
+                    
+                    // 스파이 모드인 경우 스파이 정보도 포함
+                    if (this.gameMode === 'spy' && this.spy) {
+                        gameResult.spyId = this.spy;
+                        gameResult.spyNickname = this.players.find(p => p.id === this.spy).nickname;
+                    }
+                }
             } else {
-                // 라이어가 아닌 사람이 지목된 경우
+                // 과반수 득표자 없음, 라이어 승리
                 gameResult = {
                     result: 'liarWin',
                     liarId: this.liar,
@@ -730,18 +625,66 @@ class LiarGame {
                     gameResult.spyId = this.spy;
                     gameResult.spyNickname = this.players.find(p => p.id === this.spy).nickname;
                 }
-                
-                // 점수 계산
-                this.updateScores(gameResult.result);
             }
-        } else {
-            // 과반수 득표자 없음, 라이어 승리
-            gameResult = {
-                result: 'liarWin',
-                liarId: this.liar,
-                liarNickname: this.players.find(p => p.id === this.liar).nickname,
-                word: this.currentWord
-            };
+            
+            // 점수 계산
+            const playerScores = this.updateScores(gameResult.result);
+            
+            // 게임 결과 저장
+            this.gameRef.child('gameState').update({
+                gamePhase: 'result',
+                votes: votes,
+                voteCount: voteCount,
+                voteResult: true,
+                gameResult: gameResult,
+                playerScores: playerScores
+            });
+        });
+    }
+
+    // 라이어의 단어 추측 처리
+    handleGuess(word) {
+        if (!this.isHost && this.myId !== this.liar) return;
+        
+        // 내가 라이어인 경우, 추측 내용을 호스트에게 전송
+        if (!this.isHost && this.myId === this.liar) {
+            this.messagesRef.push({
+                type: 'guess',
+                playerId: this.myId,
+                nickname: this.nickname,
+                content: word,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            return;
+        }
+        
+        // 호스트인 경우 라이어 추측 결과 처리
+        if (this.isHost) {
+            clearTimeout(this.guessTimer);
+            
+            // 추측 결과 확인
+            const isCorrect = word.toLowerCase() === this.currentWord.toLowerCase();
+            let gameResult;
+            
+            if (isCorrect) {
+                gameResult = {
+                    result: 'liarWin',
+                    liarId: this.liar,
+                    liarNickname: this.players.find(p => p.id === this.liar).nickname,
+                    word: this.currentWord,
+                    guessedWord: word,
+                    isCorrect: true
+                };
+            } else {
+                gameResult = {
+                    result: 'playersWin',
+                    liarId: this.liar,
+                    liarNickname: this.players.find(p => p.id === this.liar).nickname,
+                    word: this.currentWord,
+                    guessedWord: word,
+                    isCorrect: false
+                };
+            }
             
             // 스파이 모드인 경우 스파이 정보도 포함
             if (this.gameMode === 'spy' && this.spy) {
@@ -750,183 +693,45 @@ class LiarGame {
             }
             
             // 점수 계산
-            this.updateScores(gameResult.result);
+            const playerScores = this.updateScores(gameResult.result);
+            
+            // 게임 결과 저장
+            this.gameRef.child('gameState').update({
+                gamePhase: 'result',
+                gameResult: gameResult,
+                playerScores: playerScores
+            });
         }
-        
-        // 투표 결과 전송
-        this.broadcastToAll({
-            type: 'voteResult',
-            votes: this.votes,
-            voteCount: voteCount,
-            gameResult: gameResult,
-            playerScores: this.players.map(p => ({ id: p.id, nickname: p.nickname, score: p.score }))
-        });
-        
-        this.emit('voteResult', {
-            votes: this.votes,
-            voteCount: voteCount,
-            gameResult: gameResult,
-            playerScores: this.players.map(p => ({ id: p.id, nickname: p.nickname, score: p.score }))
-        });
-        
-        this.gamePhase = 'result';
     }
 
-    // 라이어의 단어 추측 시작
-    startWordGuessing() {
-        this.gamePhase = 'wordGuess';
-        
-        // 20초 타이머 설정
-        this.guessTimer = setTimeout(() => {
-            this.handleGuess(this.liar, '');
-        }, 20000);
-        
-        this.broadcastToAll({
-            type: 'wordGuessStart',
-            liarId: this.liar,
-            liarNickname: this.players.find(p => p.id === this.liar).nickname
-        });
-        
-        this.emit('wordGuessStart', {
-            liarId: this.liar,
-            liarNickname: this.players.find(p => p.id === this.liar).nickname
-        });
-    }
-
-    // 라이어의 단어 추측 처리
-    handleGuess(playerId, word) {
-        if (playerId !== this.liar) return;
-        clearTimeout(this.guessTimer);
-        
-        // 추측 결과 확인
-        const isCorrect = word.toLowerCase() === this.currentWord.toLowerCase();
-        let gameResult;
-        
-        if (isCorrect) {
-            gameResult = {
-                result: 'liarWin',
-                liarId: this.liar,
-                liarNickname: this.players.find(p => p.id === this.liar).nickname,
-                word: this.currentWord,
-                guessedWord: word,
-                isCorrect: true
-            };
-        } else {
-            gameResult = {
-                result: 'playersWin',
-                liarId: this.liar,
-                liarNickname: this.players.find(p => p.id === this.liar).nickname,
-                word: this.currentWord,
-                guessedWord: word,
-                isCorrect: false
-            };
+    // 메시지 전송 (채팅 및 명령 전송)
+    sendMessage(message, isTurnChat = false) {
+        // 메시지 길이 제한
+        if (message.length > 40) {
+            message = message.substring(0, 40);
         }
         
-        // 스파이 모드인 경우 스파이 정보도 포함
-        if (this.gameMode === 'spy' && this.spy) {
-            gameResult.spyId = this.spy;
-            gameResult.spyNickname = this.players.find(p => p.id === this.spy).nickname;
-        }
+        // 메시지 타입 결정
+        let messageType = isTurnChat ? 'turnChat' : 'freeChat';
         
-        // 점수 계산
-        this.updateScores(gameResult.result);
-        
-        // 게임 결과 전송
-        this.broadcastToAll({
-            type: 'gameResult',
-            gameResult: gameResult,
-            playerScores: this.players.map(p => ({ id: p.id, nickname: p.nickname, score: p.score }))
-        });
-        
-        this.emit('gameResult', {
-            gameResult: gameResult,
-            playerScores: this.players.map(p => ({ id: p.id, nickname: p.nickname, score: p.score }))
-        });
-        
-        this.gamePhase = 'result';
-    }
-
-    // 채팅 메시지 처리
-    handleChat(data) {
-        // 게임 중이고 현재 차례가 아니면 채팅 무시
-        if (this.gamePhase === 'playing' && this.turnOrder[this.currentTurn].id !== data.playerId) {
+        // 라이어 추측 단계에서는 메시지 타입 변경
+        if (this.gamePhase === 'wordGuess' && this.liar === this.myId) {
+            this.handleGuess(message);
             return;
         }
         
-        // 채팅이 40글자를 초과하면 잘라내기
-        if (data.message.length > 40) {
-            data.message = data.message.substring(0, 40);
-        }
+        // 메시지 저장
+        this.messagesRef.push({
+            type: messageType,
+            playerId: this.myId,
+            nickname: this.nickname,
+            content: message,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
         
-        // 게임 중이면 턴 채팅으로 처리
-        if (this.gamePhase === 'playing' && this.turnOrder[this.currentTurn].id === data.playerId) {
-            this.broadcastToAll({
-                type: 'turnChat',
-                playerId: data.playerId,
-                nickname: data.nickname,
-                message: data.message
-            });
-            
-            this.emit('turnChat', {
-                playerId: data.playerId,
-                nickname: data.nickname,
-                message: data.message
-            });
-            
-            // 자동으로 다음 턴으로 진행
+        // 턴 채팅인 경우 자동으로 다음 턴으로 진행 (호스트만)
+        if (isTurnChat && this.gamePhase === 'playing' && this.isHost) {
             setTimeout(() => this.nextTurn(), 1000);
-        } 
-        // 라이어 추측 단계에서는 라이어의 메시지만 처리
-        else if (this.gamePhase === 'wordGuess' && data.playerId === this.liar) {
-            this.handleGuess(data.playerId, data.message);
-        }
-        // 그 외에는 일반 채팅으로 처리
-        else {
-            this.broadcastToAll({
-                type: 'chat',
-                playerId: data.playerId,
-                nickname: data.nickname,
-                message: data.message
-            });
-            
-            this.emit('chat', {
-                playerId: data.playerId,
-                nickname: data.nickname,
-                message: data.message
-            });
-        }
-    }
-
-    // 모든 플레이어에게 메시지 전송
-    broadcastToAll(data, excludeConnections = []) {
-        try {
-            console.log('메시지 브로드캐스트:', data.type || data);
-            
-            // 모든 연결에 메시지 전송
-            for (const conn of this.connections) {
-                // 제외 목록에 있는 연결은 건너뛰기
-                if (excludeConnections.includes(conn)) continue;
-                
-                try {
-                    conn.send(data);
-                } catch (err) {
-                    console.error('메시지 전송 중 오류:', err, '연결:', conn.peer);
-                }
-            }
-            
-            // 관전자들에게도 메시지 전송 (필요한 경우)
-            for (const spectator of this.spectators) {
-                if (!spectator.connection) continue;
-                if (excludeConnections.includes(spectator.connection)) continue;
-                
-                try {
-                    spectator.connection.send(data);
-                } catch (err) {
-                    console.error('관전자에게 메시지 전송 중 오류:', err);
-                }
-            }
-        } catch (err) {
-            console.error('메시지 브로드캐스트 중 오류:', err);
         }
     }
 
@@ -937,23 +742,40 @@ class LiarGame {
 
     // 점수 업데이트
     updateScores(result) {
-        if (result === 'liarWin') {
-            // 라이어 승리: 라이어 +3점, 스파이 +1점
-            for (const player of this.players) {
+        const playerScores = [];
+        
+        for (const player of this.players) {
+            let newScore = player.score || 0;
+            
+            if (result === 'liarWin') {
+                // 라이어 승리: 라이어 +3점, 스파이 +1점
                 if (player.id === this.liar) {
-                    player.score += 3;
+                    newScore += 3;
                 } else if (player.id === this.spy) {
-                    player.score += 1;
+                    newScore += 1;
                 }
-            }
-        } else if (result === 'playersWin') {
-            // 플레이어 승리: 라이어와 스파이 외 모두 +1점
-            for (const player of this.players) {
+            } else if (result === 'playersWin') {
+                // 플레이어 승리: 라이어와 스파이 외 모두 +1점
                 if (player.id !== this.liar && player.id !== this.spy) {
-                    player.score += 1;
+                    newScore += 1;
                 }
             }
+            
+            // 로컬 점수 업데이트
+            player.score = newScore;
+            
+            // Firebase 점수 업데이트
+            this.playersRef.child(player.id).update({ score: newScore });
+            
+            // 점수 정보 배열에 추가
+            playerScores.push({
+                id: player.id,
+                nickname: player.nickname,
+                score: newScore
+            });
         }
+        
+        return playerScores;
     }
 
     // 게임 다시 시작
@@ -961,51 +783,25 @@ class LiarGame {
         if (!this.isHost) return;
         
         // 게임 상태 초기화
-        this.gameStarted = false;
-        this.gamePhase = 'lobby';
+        this.gameRef.child('gameState').set({
+            gameStarted: false,
+            gamePhase: 'lobby',
+            gameMode: this.gameMode
+        });
         
-        for (const player of this.players) {
-            player.isLiar = false;
-            player.isSpy = false;
-        }
-        
-        // 관전자들을 플레이어로 변경
-        for (const spectator of this.spectators) {
-            this.players.push({
-                id: spectator.id,
-                nickname: spectator.nickname,
-                isHost: false,
+        // 플레이어 상태 초기화
+        for (const playerId of Object.keys(this.players)) {
+            this.playersRef.child(playerId).update({
                 isLiar: false,
-                isSpy: false,
-                score: 0,
-                connection: spectator.connection
+                isSpy: false
             });
         }
-        this.spectators = [];
-        
-        // 모든 플레이어에게 게임 재시작 알림
-        this.broadcastToAll({
-            type: 'gameRestarted',
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname,
-                isHost: p.isHost,
-                score: p.score
-            }))
-        });
-        
-        this.emit('gameRestarted', {
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname,
-                isHost: p.isHost,
-                score: p.score
-            }))
-        });
     }
 
     // 게임 강제 종료
     endGame(reason) {
+        if (!this.isHost) return;
+        
         // 타이머 초기화
         if (this.voteTimer) {
             clearTimeout(this.voteTimer);
@@ -1015,153 +811,13 @@ class LiarGame {
         }
         
         // 게임 상태 초기화
-        this.gameStarted = false;
-        this.gamePhase = 'lobby';
-        
-        // 모든 플레이어에게 게임 종료 알림
-        this.broadcastToAll({
-            type: 'gameEnded',
-            reason: reason
+        this.gameRef.child('gameState').set({
+            gameStarted: false,
+            gamePhase: 'lobby',
+            gameMode: this.gameMode,
+            endReason: reason
         });
         
         this.emit('gameEnded', { reason });
-    }
-
-    // 현재 게임 상태 가져오기
-    getGameState() {
-        return {
-            gameStarted: this.gameStarted,
-            gamePhase: this.gamePhase,
-            gameMode: this.gameMode,
-            players: this.players.map(p => ({
-                id: p.id,
-                nickname: p.nickname,
-                isHost: p.isHost,
-                score: p.score
-            })),
-            currentCategory: this.currentCategory,
-            currentTurn: this.currentTurn,
-            turnOrder: this.turnOrder.map(p => ({ id: p.id, nickname: p.nickname }))
-        };
-    }
-
-    // 메시지 전송 (채팅 및 명령 전송)
-    sendMessage(message, isTurnChat = false) {
-        // 메시지 길이 제한
-        if (message.length > 40) {
-            message = message.substring(0, 40);
-        }
-        
-        const messageData = {
-            type: isTurnChat ? 'turnChat' : 'chat',
-            playerId: this.myId,
-            nickname: this.players.find(p => p.id === this.myId).nickname,
-            message: message
-        };
-        
-        // 라이어 추측 단계에서는 메시지 타입 변경
-        if (this.gamePhase === 'wordGuess' && this.liar === this.myId) {
-            messageData.type = 'guess';
-        }
-        
-        // 모든 플레이어에게 메시지 전송
-        this.broadcastToAll(messageData);
-        
-        // 자신에게도 이벤트 발생
-        this.emit(messageData.type, {
-            playerId: this.myId,
-            nickname: this.players.find(p => p.id === this.myId).nickname,
-            message: message
-        });
-        
-        // 라이어 추측 단계에서 라이어가 채팅을 보내면 자동으로 추측으로 처리
-        if (this.gamePhase === 'wordGuess' && this.liar === this.myId) {
-            this.handleGuess(this.myId, message);
-        }
-        
-        // 턴 채팅인 경우 자동으로 다음 턴으로 진행
-        if (isTurnChat && this.gamePhase === 'playing') {
-            setTimeout(() => this.nextTurn(), 1000);
-        }
-    }
-
-    // 투표 제출
-    submitVote(targetId) {
-        if (this.gamePhase !== 'voting') return;
-        
-        this.votes[this.myId] = targetId;
-        
-        this.broadcastToAll({
-            type: 'vote',
-            from: this.myId,
-            target: targetId
-        });
-        
-        // 모든 플레이어가 투표했는지 확인
-        const allVoted = this.players.every(p => this.votes[p.id] !== undefined);
-        
-        if (allVoted) {
-            clearTimeout(this.voteTimer);
-            this.endVoting();
-        }
-    }
-
-    // Peer 연결 이벤트 리스너 설정
-    setupPeerListeners() {
-        if (!this.peer) {
-            console.error("Peer 객체가 존재하지 않습니다.");
-            return;
-        }
-
-        // 연결 요청 처리
-        this.peer.on('connection', conn => {
-            console.log("새 연결 요청 받음");
-            this.handleNewConnection(conn);
-        });
-        
-        // ID 할당 이벤트
-        this.peer.on('open', id => {
-            console.log('Peer ID 할당됨:', id);
-            this.myId = id;
-            
-            // 플레이어 정보 업데이트
-            if (this.players.length > 0) {
-                this.players[0].id = id;
-            }
-        });
-        
-        // 에러 처리
-        this.peer.on('error', err => {
-            console.error('Peer 연결 오류:', err);
-            
-            // ID가 이미 사용 중인 경우
-            if (err.type === 'unavailable-id') {
-                console.log('ID가 이미 사용 중입니다. 다른 ID로 시도합니다.');
-                // 고정 ID 사용 시 다른 방법 필요
-                alert('이미 사용 중인 방입니다. 잠시 후 다시 시도해주세요.');
-            } else if (err.type === 'peer-unavailable') {
-                console.error('연결하려는 Peer를 찾을 수 없습니다.');
-            } else if (err.type === 'disconnected') {
-                console.error('서버와 연결이 끊겼습니다.');
-            } else if (err.type === 'network') {
-                console.error('네트워크 연결 문제가 발생했습니다.');
-            }
-        });
-        
-        // 연결 해제 이벤트
-        this.peer.on('disconnected', () => {
-            console.log('서버와 연결이 끊겼습니다. 재연결 시도 중...');
-            
-            // 3초 후 재연결 시도
-            setTimeout(() => {
-                this.peer.reconnect();
-            }, 3000);
-        });
-        
-        // 완전 종료 이벤트
-        this.peer.on('close', () => {
-            console.log('Peer 연결이 완전히 종료되었습니다.');
-            this.peer = null;
-        });
     }
 }
