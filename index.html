@@ -137,6 +137,30 @@
 
         <!-- 게임 화면 -->
         <div id="game-screen" style="display:none;">
+            <!-- 게임 시작 팝업 추가 -->
+            <div id="game-start-popup" class="game-popup">
+                <div class="popup-content">
+                    <h2>게임 시작!</h2>
+                    <div id="popup-category-word"></div>
+                    <div id="popup-role-info"></div>
+                </div>
+            </div>
+            
+            <!-- 게임 종료 카운트다운 팝업 추가 -->
+            <div id="game-end-countdown" class="game-popup">
+                <div class="popup-content">
+                    <h2>게임 종료!</h2>
+                    <div id="end-result-info"></div>
+                    <div class="countdown-container">
+                        <div class="countdown-number">5</div>
+                        <div class="countdown-progress-container">
+                            <div class="countdown-progress-bar"></div>
+                        </div>
+                        <div id="countdown-timer">초 후 다음 게임이 시작됩니다</div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="game-header">
                 <div class="category-word">
                     <div id="category"></div>

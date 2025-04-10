@@ -27,7 +27,8 @@ body {
     background-color: #fff;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.12);
-    overflow: auto; /* overflow hidden에서 auto로 변경하여 스크롤 가능하게 */
+    overflow-y: auto; /* overflow auto에서 overflow-y로 변경 */
+    overflow-x: hidden; /* 가로 스크롤 방지 */
     position: relative;
     min-height: 500px; /* 최소 높이 감소 */
     max-height: 90vh; /* 화면 높이의 90%로 제한 */
@@ -59,6 +60,9 @@ button {
     cursor: pointer;
     font-size: 15px; /* 크기 축소 */
     transition: all 0.3s;
+    position: relative; /* 위치 속성 추가 */
+    z-index: 5; /* z-index 추가 */
+    pointer-events: auto; /* 포인터 이벤트 활성화 */
 }
 
 button:hover {
@@ -383,6 +387,7 @@ input, select {
     padding: 25px; /* 패딩 축소 */
     padding-top: 60px; /* 상단 패딩 축소 */
     overflow: auto; /* 스크롤 가능하게 */
+    position: relative; /* 위치 속성 추가 */
 }
 
 .game-header {
@@ -494,7 +499,7 @@ input, select {
     min-width: 300px; /* 최소 너비 설정 */
 }
 
-.chat-messages {
+.chat-messages, #free-chat-messages {
     flex: 1;
     background-color: #f9f9f9;
     border-radius: 8px;
@@ -503,6 +508,8 @@ input, select {
     margin-bottom: 12px; /* 마진 축소 */
     min-height: 300px; /* 최소 높이 축소 */
     max-height: 450px; /* 최대 높이 축소 */
+    position: relative; /* 위치 속성 추가 */
+    z-index: 1; /* 채팅 메시지 영역의 z-index 낮게 설정 */
 }
 
 .chat-message, .turn-message, .system-message, .free-chat-message {
@@ -541,18 +548,24 @@ input, select {
 .chat-input-area {
     display: flex;
     gap: 8px; /* 간격 축소 */
+    position: relative; /* 위치 속성 추가 */
+    z-index: 10; /* z-index 추가 */
 }
 
 .chat-input-area input {
     flex: 1;
     font-size: 14px; /* 크기 축소 */
     padding: 8px 10px; /* 패딩 축소 */
+    position: relative; /* 위치 속성 추가 */
 }
 
 .chat-input-area button {
     min-width: 70px; /* 최소 너비 축소 */
     font-size: 14px; /* 크기 축소 */
     padding: 8px; /* 패딩 축소 */
+    position: relative; /* 위치 속성 추가 */
+    z-index: 11; /* z-index 추가 */
+    pointer-events: auto; /* 포인터 이벤트 활성화 */
 }
 
 .right-column {
@@ -598,6 +611,9 @@ input, select {
     padding: 6px 12px; /* 패딩 축소 */
     font-size: 14px; /* 크기 축소 */
     min-width: 70px; /* 최소 너비 축소 */
+    position: relative; /* 위치 속성 추가 */
+    z-index: 11; /* z-index 추가 */
+    pointer-events: auto; /* 포인터 이벤트 활성화 */
 }
 
 #vote-result, #game-result {
@@ -894,4 +910,150 @@ input, select {
 
 .room-join-section button:hover {
     background-color: #0b7dda;
+}
+
+/* 게임 시작/종료 팝업 스타일 */
+.game-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.game-popup.active {
+    display: flex;
+    opacity: 1;
+}
+
+.popup-content {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+    max-width: 90%;
+    width: 400px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+}
+
+.game-popup.active .popup-content {
+    transform: scale(1);
+}
+
+.popup-content h2 {
+    margin-top: 0;
+    color: #4CAF50;
+    font-size: 26px;
+}
+
+#popup-category-word {
+    font-size: 20px;
+    margin: 15px 0;
+}
+
+#popup-role-info {
+    font-size: 18px;
+    margin: 15px 0;
+}
+
+#popup-role-info.liar {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+#popup-role-info.spy {
+    color: #9b59b6;
+    font-weight: bold;
+}
+
+#end-result-info {
+    font-size: 18px;
+    margin: 15px 0;
+}
+
+#countdown-timer {
+    font-size: 20px;
+    margin: 15px 0;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* 카운트다운 UI 개선 */
+.countdown-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.countdown-number {
+    font-size: 60px;
+    font-weight: bold;
+    color: #3498db;
+    margin: 10px 0;
+    transition: transform 0.3s ease, color 0.3s ease;
+    width: 100px;
+    height: 100px;
+    line-height: 100px;
+    text-align: center;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.countdown-number.pulse {
+    animation: pulse 0.5s ease-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.countdown-progress-container {
+    width: 80%;
+    height: 10px;
+    background-color: #eee;
+    border-radius: 5px;
+    margin: 15px 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.countdown-progress-bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    border-radius: 5px;
+    transition: width 0.2s linear;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 색상 변화 애니메이션 */
+.countdown-number[data-count="5"] { color: #2ecc71; } /* 녹색 */
+.countdown-number[data-count="4"] { color: #27ae60; }
+.countdown-number[data-count="3"] { color: #f39c12; }
+.countdown-number[data-count="2"] { color: #e67e22; }
+.countdown-number[data-count="1"] { color: #e74c3c; } /* 빨간색 */
+
+#countdown-timer {
+    font-size: 18px;
+    margin: 5px 0;
+    font-weight: bold;
+    color: #3498db;
+    text-align: center;
 }
