@@ -112,8 +112,7 @@ class LiarGame {
                     config: {
                         'iceServers': [
                             { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+                            { urls: 'stun:stun1.l.google.com:19302' }
                         ]
                     }
                 });
@@ -154,8 +153,7 @@ class LiarGame {
                     config: {
                         'iceServers': [
                             { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+                            { urls: 'stun:stun1.l.google.com:19302' }
                         ]
                     }
                 });
@@ -233,52 +231,60 @@ class LiarGame {
     }
 
     // 방 참가 - 다른 플레이어가 호스트 방에 참가하는 함수
-    async joinRoom(roomId) {
-        // 고정 방 ID 사용 (사용자 입력 무시)
+    async joinRoom() {
+        // 고정 방 ID 사용
         const FIXED_ROOM_ID = 'liargame-fixed-room';
         
         console.log('방 참가 시도:', FIXED_ROOM_ID);
         
         return new Promise((resolve, reject) => {
-            // 호스트에게 연결 시도
-            const conn = this.peer.connect(FIXED_ROOM_ID, {
-                reliable: true,
-                metadata: {
-                    playerInfo: this.players.find(p => p.id === this.myId)
-                }
-            });
-            
-            // 연결 타임아웃 설정
-            const timeout = setTimeout(() => {
-                reject(new Error('방 참가 시간 초과'));
-            }, 10000);
-            
-            conn.on('open', () => {
-                clearTimeout(timeout);
-                console.log('호스트에게 연결 성공:', FIXED_ROOM_ID);
-                
-                // 연결 리스트에 추가
-                this.connections.push(conn);
-                
-                // 연결 리스너 설정
-                this.setupConnectionListeners(conn);
-                
-                // 플레이어 정보 전송
-                conn.send({
-                    type: 'playerJoin',
-                    player: this.players.find(p => p.id === this.myId)
+            try {
+                // 호스트에게 연결 시도
+                const conn = this.peer.connect(FIXED_ROOM_ID, {
+                    reliable: true
                 });
                 
-                // 방 참가 성공 이벤트 발생
-                this.emit('roomJoined', { roomId: FIXED_ROOM_ID });
-                resolve();
-            });
-            
-            conn.on('error', err => {
-                clearTimeout(timeout);
-                console.error('방 참가 오류:', err);
+                // 연결 타임아웃 설정
+                const timeout = setTimeout(() => {
+                    reject(new Error('방 참가 시간 초과'));
+                }, 10000);
+                
+                // 연결 성공 시
+                conn.on('open', () => {
+                    clearTimeout(timeout);
+                    console.log('호스트에게 연결 성공:', FIXED_ROOM_ID);
+                    
+                    // 연결 리스트에 추가
+                    this.connections.push(conn);
+                    
+                    // 연결 리스너 설정
+                    this.setupConnectionListeners(conn);
+                    
+                    // 플레이어 정보 전송
+                    const playerInfo = this.players.find(p => p.id === this.myId);
+                    conn.send({
+                        type: 'playerJoin',
+                        player: {
+                            id: playerInfo.id,
+                            nickname: playerInfo.nickname,
+                            isHost: playerInfo.isHost
+                        }
+                    });
+                    
+                    // 방 참가 성공 이벤트 발생
+                    this.emit('roomJoined', { roomId: FIXED_ROOM_ID });
+                    resolve();
+                });
+                
+                conn.on('error', err => {
+                    clearTimeout(timeout);
+                    console.error('방 참가 오류:', err);
+                    reject(err);
+                });
+            } catch (err) {
+                console.error('방 참가 요청 생성 중 오류:', err);
                 reject(err);
-            });
+            }
         });
     }
 
@@ -393,8 +399,11 @@ class LiarGame {
 
     // 플레이어 입장 처리
     handlePlayerJoin(conn, player) {
+        console.log('플레이어 입장 처리:', player);
+        
         // 이미 게임이 시작됐으면 관전자로 처리
         if (this.gameStarted) {
+            console.log('게임이 이미 시작됨, 관전자로 처리:', player.nickname);
             this.spectators.push({
                 id: player.id,
                 nickname: player.nickname,
@@ -415,12 +424,22 @@ class LiarGame {
             return;
         }
 
+        // 기본 정보 검증
+        if (!player || !player.id || !player.nickname) {
+            console.error('플레이어 정보가 유효하지 않음:', player);
+            return;
+        }
+
         // 이미 있는 플레이어인지 확인
         const existingPlayer = this.players.find(p => p.id === player.id);
-        if (existingPlayer) return;
+        if (existingPlayer) {
+            console.log('이미 등록된 플레이어:', player.nickname);
+            return;
+        }
 
         // 최대 8명까지만 입장 가능
         if (this.players.length >= 8) {
+            console.log('방이 가득 참:', player.nickname);
             conn.send({
                 type: 'roomFull'
             });
@@ -428,33 +447,48 @@ class LiarGame {
         }
 
         // 플레이어 추가
-        this.players.push({
-            ...player,
+        const newPlayer = {
+            id: player.id,
+            nickname: player.nickname,
+            isHost: false,
             isLiar: false,
             isSpy: false,
             score: 0,
             connection: conn
-        });
+        };
+        
+        this.players.push(newPlayer);
+        console.log('플레이어 추가됨:', newPlayer.nickname);
 
         // 다른 모든 플레이어에게 새 플레이어 정보 전송
-        for (const connection of this.connections) {
-            if (connection !== conn) {
-                connection.send({
-                    type: 'playerJoined',
-                    player: {
-                        id: player.id,
-                        nickname: player.nickname,
-                        isHost: player.isHost,
-                        score: 0
-                    }
-                });
-            }
-        }
+        const playerInfoToSend = {
+            id: player.id,
+            nickname: player.nickname,
+            isHost: false,
+            score: 0
+        };
+        
+        this.broadcastToAll({
+            type: 'playerJoined',
+            player: playerInfoToSend
+        }, [conn]);
 
         // 이벤트 발생
         this.emit('playerJoined', { 
             id: player.id,
             nickname: player.nickname
+        });
+        
+        // 현재 방 상태 전송
+        conn.send({
+            type: 'roomState',
+            players: this.players.map(p => ({
+                id: p.id,
+                nickname: p.nickname, 
+                isHost: p.isHost,
+                score: p.score
+            })),
+            gameMode: this.gameMode
         });
     }
 
@@ -952,15 +986,35 @@ class LiarGame {
     }
 
     // 모든 플레이어에게 메시지 전송
-    broadcastToAll(message) {
-        for (const player of this.players) {
-            if (player.id !== this.myId) {
-                player.connection.send(message);
+    broadcastToAll(data, excludeConnections = []) {
+        try {
+            console.log('메시지 브로드캐스트:', data.type || data);
+            
+            // 모든 연결에 메시지 전송
+            for (const conn of this.connections) {
+                // 제외 목록에 있는 연결은 건너뛰기
+                if (excludeConnections.includes(conn)) continue;
+                
+                try {
+                    conn.send(data);
+                } catch (err) {
+                    console.error('메시지 전송 중 오류:', err, '연결:', conn.peer);
+                }
             }
-        }
-        
-        for (const spectator of this.spectators) {
-            spectator.connection.send(message);
+            
+            // 관전자들에게도 메시지 전송 (필요한 경우)
+            for (const spectator of this.spectators) {
+                if (!spectator.connection) continue;
+                if (excludeConnections.includes(spectator.connection)) continue;
+                
+                try {
+                    spectator.connection.send(data);
+                } catch (err) {
+                    console.error('관전자에게 메시지 전송 중 오류:', err);
+                }
+            }
+        } catch (err) {
+            console.error('메시지 브로드캐스트 중 오류:', err);
         }
     }
 

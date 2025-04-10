@@ -145,13 +145,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 방장인 경우
             if (game.isHost) {
                 console.log('방장으로 접속 성공');
-                // 방 생성
-                game.createRoom();
                 isFirstPlayer = true;
                 
                 // 첫 번째 플레이어는 자동으로 방장
                 startGameBtn.disabled = false;
                 gameModeSelect.disabled = false;
+                
+                // 플레이어 목록 업데이트
+                updatePlayersList();
             } else {
                 // 일반 플레이어인 경우
                 console.log('일반 플레이어로 접속 시도');
@@ -159,18 +160,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // 기존 방 입장 시도
                 try {
-                    // 고정된 방 ID로 입장 시도
-                    await game.joinRoom(DEFAULT_ROOM_ID);
+                    // 호스트 방에 입장 시도
+                    console.log('호스트 방 입장 시도...');
+                    await game.joinRoom();
                     console.log('기존 방 입장 성공');
                     
                     // 일반 플레이어는 게임 시작/설정 버튼 비활성화
                     startGameBtn.disabled = true;
                     gameModeSelect.disabled = true;
+                    
+                    // 플레이어 목록 업데이트
+                    updatePlayersList();
                 } catch (joinError) {
                     console.error('방 입장 실패:', joinError.message);
                     
-                    // 오류 메시지 표시
-                    alert('방 입장에 실패했습니다. 다시 시도해주세요.');
+                    // 오류 메시지 표시 및 상태 표시
+                    let errorMsg = '방 입장에 실패했습니다: ';
+                    if (joinError.message.includes('Failed to construct')) {
+                        errorMsg += 'WebRTC 연결 설정 오류. 브라우저나 네트워크 문제일 수 있습니다.';
+                    } else if (joinError.message.includes('Could not connect to peer')) {
+                        errorMsg += '호스트에 연결할 수 없습니다. 방이 존재하지 않거나 호스트가 오프라인입니다.';
+                    } else {
+                        errorMsg += joinError.message;
+                    }
+                    
+                    alert(errorMsg);
+                    
+                    // 로그인 화면으로 돌아가기
                     joinGameBtn.disabled = false;
                     joinGameBtn.textContent = '게임 참여하기';
                     loginScreen.style.display = 'block';
@@ -178,9 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-            
-            // 플레이어 목록 업데이트
-            updatePlayersList();
             
             console.log('게임 초기화 및 방 설정 완료');
         } catch (error) {
