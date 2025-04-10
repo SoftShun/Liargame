@@ -99,13 +99,10 @@ class LiarGame {
 
         try {
             console.log("PeerJS 인스턴스 생성 시작");
-            // PeerJS 인스턴스 생성 - GitHub Pages 호환 설정
+            // PeerJS 인스턴스 생성 - 기본 PeerJS 클라우드 서버 사용
             this.peer = new Peer(null, {
                 debug: 3, // 최대 디버그 레벨
-                secure: true,
-                host: 'peerjs.min.js.org', // 안정적인 공용 서버
-                port: 443,
-                path: '/',
+                // 명시적 호스트 설정 제거 - 기본 PeerJS 서버 사용
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },

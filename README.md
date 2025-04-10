@@ -37,8 +37,12 @@
 
 ## GitHub Pages에서 실행하기
 
-이 게임은 GitHub Pages에서 호스팅되어 있습니다: [라이어 게임 플레이하기](https://USERNAME.github.io/liargame)
+1. 이 리포지토리를 포크하거나 클론합니다.
+2. GitHub에서 Settings > Pages 메뉴로 이동합니다.
+3. Source를 `Deploy from a branch`로 설정하고 Branch를 `main`으로 선택합니다.
+4. Save 버튼을 클릭합니다.
+5. 1-3분 후에 `https://SoftShun.github.io/Liargame`에서 게임에 접속할 수 있습니다.
 
 ## 크레딧
 
-개발: [개발자 이름] 
+개발: SoftShun 
